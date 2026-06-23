@@ -11,19 +11,6 @@ from app.routers import (
     llamadas,
     webhooks,
 )
-from app.db.database import engine, Base
-
-# IMPORTAR TODOS LOS MODELOS
-from app.models.doctor import Doctor
-from app.models.paciente import Paciente
-from app.models.expediente import Expediente
-from app.models.cita import Cita
-from app.models.consulta import Consulta
-from app.models.receta import Receta
-from app.models.examen import Examen
-from app.models.llamada import Llamada
-
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="API Clínica Telemedicina",
