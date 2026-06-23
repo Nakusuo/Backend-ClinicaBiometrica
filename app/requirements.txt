@@ -6,3 +6,6 @@ python-jose
 passlib[bcrypt]
 python-dotenv
 pydantic[email]
+face-recognition
+numpy
+opencv-python
