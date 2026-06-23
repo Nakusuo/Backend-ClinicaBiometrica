@@ -11,6 +11,8 @@ class Doctor(Base):
     apellidos = Column(String(100), nullable=True)
     correo = Column(String(100), unique=True, index=True, nullable=False)
     especialidad = Column(String(100), nullable=True)
+    cedula = Column(String(50), nullable=True)
+    telefono = Column(String(50), nullable=True)
     password_hash = Column(Text, nullable=True)
     embedding_facial = Column(Text, nullable=True)
 
