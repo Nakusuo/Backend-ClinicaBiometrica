@@ -7,6 +7,7 @@ from app.models.paciente import Paciente
 from app.models.doctor import Doctor
 from app.models.llamada import Llamada
 from datetime import datetime
+from app.core.security import get_current_user
 
 router = APIRouter()
 
@@ -161,3 +162,38 @@ async def terminar_llamada(cita_id: int, db: Session = Depends(get_db)):
         "cita_id": cita_id,
         "mensaje": "Llamada terminada"
     }
+
+@router.get("/")
+def listar_llamadas(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    llamadas = db.query(Llamada).order_by(Llamada.id.desc()).all()
+    results = []
+    for l in llamadas:
+        fecha_str = ""
+        hora_str = ""
+        if l.start_time:
+            fecha_str = l.start_time.strftime("%Y-%m-%d")
+            hora_str = l.start_time.strftime("%H:%M:%S")
+        elif l.created_at:
+            fecha_str = l.created_at.strftime("%Y-%m-%d")
+            hora_str = l.created_at.strftime("%H:%M:%S")
+            
+        paciente_info = None
+        if l.paciente:
+            paciente_info = f"{l.paciente.nombres} {l.paciente.apellidos}"
+            
+        results.append({
+            "id": l.id,
+            "fecha": fecha_str,
+            "hora": hora_str,
+            "duracion": l.duracion or 0,
+            "paciente": paciente_info,
+            "paciente_id": l.paciente_id,
+            "doctor_id": l.doctor_id,
+            "room_id": l.room_id,
+            "estado": l.estado
+        })
+    return results
+
