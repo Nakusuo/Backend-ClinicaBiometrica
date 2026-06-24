@@ -5,7 +5,7 @@ from app.models.expediente import Expediente
 from app.models.consulta import Consulta
 from app.models.receta import Receta
 from app.schemas.expediente import ExpedienteCreate
-from datetime import datetime
+from app.core.security import get_current_doctor, get_current_user
 
 router = APIRouter()
 
@@ -40,7 +40,7 @@ def map_expediente_from_consulta(e: Expediente, c: Consulta, r: Receta) -> dict:
     }
 
 @router.get("/")
-def listar_expedientes(db: Session = Depends(get_db)):
+def listar_expedientes(db: Session = Depends(get_db), current_doctor = Depends(get_current_doctor)):
     expedientes = db.query(Expediente).all()
     results = []
     for e in expedientes:
@@ -50,7 +50,7 @@ def listar_expedientes(db: Session = Depends(get_db)):
     return results
 
 @router.get("/paciente/{paciente_id}")
-def obtener_expedientes_paciente(paciente_id: int, db: Session = Depends(get_db)):
+def obtener_expedientes_paciente(paciente_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     expediente = db.query(Expediente).filter(Expediente.paciente_id == paciente_id).first()
     if not expediente:
         return []
@@ -64,7 +64,7 @@ def obtener_expedientes_paciente(paciente_id: int, db: Session = Depends(get_db)
     return results
 
 @router.get("/{expediente_id}")
-def obtener_expediente(expediente_id: int, db: Session = Depends(get_db)):
+def obtener_expediente(expediente_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     # En la nueva bd, el id recibido puede representar el id de la consulta
     consulta = db.query(Consulta).filter(Consulta.id == expediente_id).first()
     if consulta:
@@ -81,7 +81,7 @@ def obtener_expediente(expediente_id: int, db: Session = Depends(get_db)):
     return map_expediente_from_consulta(expediente, consulta, receta)
 
 @router.post("/")
-def crear_expediente(payload: ExpedienteCreate, db: Session = Depends(get_db)):
+def crear_expediente(payload: ExpedienteCreate, db: Session = Depends(get_db), current_doctor = Depends(get_current_doctor)):
     p_id = payload.patientId or payload.paciente_id
     d_id = payload.doctorId or payload.doctor_id
     
@@ -134,7 +134,7 @@ def crear_expediente(payload: ExpedienteCreate, db: Session = Depends(get_db)):
     return map_expediente_from_consulta(expediente, consulta, receta)
 
 @router.put("/{expediente_id}")
-def actualizar_expediente(expediente_id: int, payload: ExpedienteCreate, db: Session = Depends(get_db)):
+def actualizar_expediente(expediente_id: int, payload: ExpedienteCreate, db: Session = Depends(get_db), current_doctor = Depends(get_current_doctor)):
     # Buscamos si el id corresponde a la consulta (que representa el registro clínico en el front)
     consulta = db.query(Consulta).filter(Consulta.id == expediente_id).first()
     if consulta:
@@ -162,7 +162,7 @@ def actualizar_expediente(expediente_id: int, payload: ExpedienteCreate, db: Ses
     raise HTTPException(status_code=404, detail="Registro clínico no encontrado")
 
 @router.delete("/{expediente_id}")
-def eliminar_expediente(expediente_id: int, db: Session = Depends(get_db)):
+def eliminar_expediente(expediente_id: int, db: Session = Depends(get_db), current_doctor = Depends(get_current_doctor)):
     consulta = db.query(Consulta).filter(Consulta.id == expediente_id).first()
     if consulta:
         db.delete(consulta)
