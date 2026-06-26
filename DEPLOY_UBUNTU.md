@@ -20,7 +20,6 @@ Gratis:
 
 - Ubuntu Server en VirtualBox.
 - Docker y Docker Compose.
-- FastAPI, Angular, PostgreSQL, MariaDB, Nginx.
 - FreePBX/Asterisk con modulos open source.
 - WireGuard para cifrar trafico entre servidores.
 - Cloudflare DNS y Cloudflare Tunnel para web/API HTTP/HTTPS.
