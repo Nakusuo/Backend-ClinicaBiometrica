@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
@@ -8,6 +8,7 @@ from app.models.llamada import Llamada
 from app.models.paciente import Paciente
 from app.models.doctor import Doctor
 from datetime import datetime
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -76,7 +77,14 @@ def webhook_citas(payload: WebhookCitaPayload, db: Session = Depends(get_db)):
     }
 
 @router.post("/asterisk-event")
-async def webhook_asterisk_event(payload: AsteriskEventPayload, db: Session = Depends(get_db)):
+async def webhook_asterisk_event(
+    payload: AsteriskEventPayload,
+    db: Session = Depends(get_db),
+    x_webhook_token: Optional[str] = Header(default=None),
+):
+    if settings.asterisk_webhook_token and x_webhook_token != settings.asterisk_webhook_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de webhook inválido.")
+
     # 1. Search for patient by phone or DNI
     paciente = db.query(Paciente).filter(
         (Paciente.dni == payload.caller_id) | 
