@@ -5,6 +5,11 @@ class FacialLoginRequest(BaseModel):
     correo: EmailStr
     embedding_facial: List[float]
 
+class LoginRequest(BaseModel):
+    correo: EmailStr
+    password: str
+    role: Optional[str] = None
+
 class DoctorRegisterRequest(BaseModel):
     nombre: str
     email: EmailStr

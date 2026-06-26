@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.models.doctor import Doctor
 from app.models.paciente import Paciente
-from app.schemas.auth import FacialLoginRequest, DoctorRegisterRequest, PatientRegisterRequest
+from app.schemas.auth import FacialLoginRequest, DoctorRegisterRequest, PatientRegisterRequest, LoginRequest
 from app.core.biometria import verificar_similitud_facial
 from app.core.security import create_access_token
 import bcrypt
@@ -22,6 +22,72 @@ def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
     return hashed.decode('utf-8')
+
+def verify_password(password: str, password_hash: str | None) -> bool:
+    if not password_hash:
+        return False
+    return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+
+def build_doctor_response(doctor: Doctor) -> dict:
+    return {
+        "id": doctor.id,
+        "nombre": doctor.nombres,
+        "apellido": doctor.apellidos,
+        "nombres": doctor.nombres,
+        "apellidos": doctor.apellidos,
+        "especialidad": doctor.especialidad,
+        "email": doctor.correo,
+        "correo": doctor.correo,
+        "telefono": doctor.telefono
+    }
+
+def build_patient_response(paciente: Paciente) -> dict:
+    return {
+        "id": paciente.id,
+        "nombre": paciente.nombres,
+        "apellido": paciente.apellidos,
+        "nombres": paciente.nombres,
+        "apellidos": paciente.apellidos,
+        "dni": paciente.dni,
+        "email": paciente.correo,
+        "correo": paciente.correo,
+        "telefono": paciente.telefono,
+        "fechaNacimiento": paciente.fecha_nacimiento,
+        "fecha_nacimiento": paciente.fecha_nacimiento,
+        "direccion": paciente.direccion
+    }
+
+@router.post("/login")
+def login(payload: LoginRequest, db: Session = Depends(get_db)):
+    doctor = None
+    paciente = None
+
+    if payload.role in (None, "doctor"):
+        doctor = db.query(Doctor).filter(Doctor.correo == payload.correo).first()
+    if payload.role in (None, "paciente"):
+        paciente = db.query(Paciente).filter(Paciente.correo == payload.correo).first()
+
+    if doctor:
+        if not doctor.activo:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="El médico está inactivo.")
+        if not verify_password(payload.password, doctor.password_hash):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas.")
+        token = create_access_token(data={"sub": doctor.correo, "rol": "doctor", "doctor_id": doctor.id})
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "doctor": build_doctor_response(doctor)
+        }
+
+    if paciente and verify_password(payload.password, paciente.password_hash):
+        token = create_access_token(data={"sub": paciente.correo, "rol": "paciente", "patient_id": paciente.id})
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "patient": build_patient_response(paciente)
+        }
+
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas.")
 
 @router.post("/register-doctor")
 def register_doctor(payload: DoctorRegisterRequest, db: Session = Depends(get_db)):
@@ -99,17 +165,7 @@ def facial_login(payload: FacialLoginRequest, db: Session = Depends(get_db)):
         return {
             "access_token": token,
             "token_type": "bearer",
-            "doctor": {
-                "id": doctor.id,
-                "nombre": doctor.nombres,
-                "apellido": doctor.apellidos,
-                "nombres": doctor.nombres,
-                "apellidos": doctor.apellidos,
-                "especialidad": doctor.especialidad,
-                "email": doctor.correo,
-                "correo": doctor.correo,
-                "telefono": doctor.telefono
-            }
+            "doctor": build_doctor_response(doctor)
         }
 
     # 2. Si no es doctor, buscar en Pacientes
@@ -128,20 +184,7 @@ def facial_login(payload: FacialLoginRequest, db: Session = Depends(get_db)):
         return {
             "access_token": token,
             "token_type": "bearer",
-            "patient": {
-                "id": paciente.id,
-                "nombre": paciente.nombres,
-                "apellido": paciente.apellidos,
-                "nombres": paciente.nombres,
-                "apellidos": paciente.apellidos,
-                "dni": paciente.dni,
-                "email": paciente.correo,
-                "correo": paciente.correo,
-                "telefono": paciente.telefono,
-                "fechaNacimiento": paciente.fecha_nacimiento,
-                "fecha_nacimiento": paciente.fecha_nacimiento,
-                "direccion": paciente.direccion
-            }
+            "patient": build_patient_response(paciente)
         }
 
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no registrado en el sistema.")
