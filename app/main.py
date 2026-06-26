@@ -13,7 +13,8 @@ from app.routers import (
     citas,
     expedientes,
     webhooks,
-    llamadas
+    llamadas,
+    freepbx
 )
 
 # Importamos todos los modelos para que Base.metadata los reconozca al crear las tablas
@@ -115,6 +116,7 @@ app.include_router(citas.router, prefix="/api/citas", tags=["Citas"])
 app.include_router(expedientes.router, prefix="/api/expedientes", tags=["Expedientes"])
 app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
 app.include_router(llamadas.router, prefix="/api/llamadas", tags=["Llamadas"])
+app.include_router(freepbx.router, prefix="/api/freepbx", tags=["FreePBX"])
 
 @app.get("/")
 def root():
