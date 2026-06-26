@@ -5,6 +5,7 @@ from app.models.cita import Cita
 from app.models.paciente import Paciente
 from app.models.doctor import Doctor
 from app.schemas.cita import CitaCreate, CitaUpdateEstado
+from app.core.security import get_current_user, get_current_doctor, get_current_patient
 
 router = APIRouter()
 
@@ -54,29 +55,29 @@ def map_cita(c: Cita) -> dict:
     }
 
 @router.get("/")
-def listar_citas(db: Session = Depends(get_db)):
+def listar_citas(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     citas = db.query(Cita).all()
     return [map_cita(c) for c in citas]
 
 @router.get("/doctor/{doctor_id}")
-def listar_citas_doctor(doctor_id: int, db: Session = Depends(get_db)):
+def listar_citas_doctor(doctor_id: int, db: Session = Depends(get_db), current_doctor = Depends(get_current_doctor)):
     citas = db.query(Cita).filter(Cita.doctor_id == doctor_id).all()
     return [map_cita(c) for c in citas]
 
 @router.get("/paciente/{patient_id}")
-def listar_citas_paciente(patient_id: int, db: Session = Depends(get_db)):
+def listar_citas_paciente(patient_id: int, db: Session = Depends(get_db), current_patient = Depends(get_current_patient)):
     citas = db.query(Cita).filter(Cita.paciente_id == patient_id).all()
     return [map_cita(c) for c in citas]
 
 @router.get("/{cita_id}")
-def obtener_cita(cita_id: int, db: Session = Depends(get_db)):
+def obtener_cita(cita_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     cita = db.query(Cita).filter(Cita.id == cita_id).first()
     if not cita:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
     return map_cita(cita)
 
 @router.post("/")
-def crear_cita(payload: CitaCreate, db: Session = Depends(get_db)):
+def crear_cita(payload: CitaCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     cita = Cita(
         paciente_id=payload.paciente_id,
         doctor_id=payload.doctor_id,
@@ -91,7 +92,7 @@ def crear_cita(payload: CitaCreate, db: Session = Depends(get_db)):
     return map_cita(cita)
 
 @router.put("/{cita_id}")
-def actualizar_cita(cita_id: int, payload: CitaCreate, db: Session = Depends(get_db)):
+def actualizar_cita(cita_id: int, payload: CitaCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     cita = db.query(Cita).filter(Cita.id == cita_id).first()
     if not cita:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
@@ -108,7 +109,7 @@ def actualizar_cita(cita_id: int, payload: CitaCreate, db: Session = Depends(get
     return map_cita(cita)
 
 @router.patch("/{cita_id}/estado")
-def actualizar_cita_estado(cita_id: int, payload: CitaUpdateEstado, db: Session = Depends(get_db)):
+def actualizar_cita_estado(cita_id: int, payload: CitaUpdateEstado, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     cita = db.query(Cita).filter(Cita.id == cita_id).first()
     if not cita:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
@@ -119,7 +120,7 @@ def actualizar_cita_estado(cita_id: int, payload: CitaUpdateEstado, db: Session 
     return map_cita(cita)
 
 @router.delete("/{cita_id}")
-def eliminar_cita(cita_id: int, db: Session = Depends(get_db)):
+def eliminar_cita(cita_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     cita = db.query(Cita).filter(Cita.id == cita_id).first()
     if not cita:
         raise HTTPException(status_code=404, detail="Cita no encontrada")

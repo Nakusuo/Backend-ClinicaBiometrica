@@ -1,18 +1,23 @@
-import face_recognition
+from deepface import DeepFace
 import cv2
-import numpy as np
 import os
 
-print("=== S1: PRUEBA DE CONCEPTO BIOMÉTRICA INTERGRANTE 4 ===")
+print("=== S1: PRUEBA DE CONCEPTO BIOMÉTRICA CON DEEPFACE ===")
 
 ruta_imagen = "app/pruebas_biometria/foto_doctor.jpg"
 
 if not os.path.exists(ruta_imagen):
     print("\n[!] Estructura lista. Para correr la simulación de imágenes de la S1, recuerda guardar una foto en la ruta especificada.")
 else:
-    img = cv2.imread(ruta_imagen)
-    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    encodings = face_recognition.face_encodings(rgb)
-    if encodings:
-        print(f"-> Embedding generado con éxito de manera local usando face_recognition.")
-        print(f"-> Dimensiones del vector (debe ser 128): {len(encodings[0])}")
+    try:
+        # Generar embedding usando FaceNet (128 dimensiones)
+        print(f"Analizando imagen: {ruta_imagen}...")
+        resp = DeepFace.represent(img_path=ruta_imagen, model_name="Facenet", enforce_detection=False)
+        if resp:
+            embedding = resp[0]["embedding"]
+            print(f"-> Embedding generado con éxito usando DeepFace (FaceNet)!")
+            print(f"-> Dimensiones del vector: {len(embedding)}")
+        else:
+            print("No se pudieron extraer características faciales.")
+    except Exception as e:
+        print(f"Error al procesar la imagen con DeepFace: {e}")
