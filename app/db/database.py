@@ -1,14 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import declarative_base
-from dotenv import load_dotenv
-import os
+from app.core.config import settings
 
-load_dotenv()
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    DATABASE_URL = "sqlite:///./telemedicina.db"
+DATABASE_URL = settings.database_url
 
 # Para SQLite necesitamos argumentos de conexión adicionales
 if DATABASE_URL.startswith("sqlite"):
