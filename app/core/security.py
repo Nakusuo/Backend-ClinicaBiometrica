@@ -6,9 +6,10 @@ from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.models.doctor import Doctor
 from app.models.paciente import Paciente
+from app.core.config import settings
 
-SECRET_KEY = "telemedicina2026"
-ALGORITHM = "HS256"
+SECRET_KEY = settings.secret_key
+ALGORITHM = settings.algorithm
 
 security_scheme = HTTPBearer()
 
@@ -21,7 +22,7 @@ def get_db():
 
 def create_access_token(data):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(hours=1)
+    expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
     to_encode.update({
         "exp": expire
     })
@@ -73,4 +74,4 @@ def get_current_patient(current_user = Depends(get_current_user)):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Operación permitida únicamente para pacientes"
         )
-    return current_user
+    return current_user

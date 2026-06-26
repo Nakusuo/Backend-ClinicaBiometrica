@@ -5,6 +5,7 @@ import json
 
 from app.db.database import Base, engine, SessionLocal
 from app.db.seeder import seed_db
+from app.core.config import settings
 from app.routers import (
     auth,
     pacientes,
@@ -34,7 +35,7 @@ app = FastAPI(
 # Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

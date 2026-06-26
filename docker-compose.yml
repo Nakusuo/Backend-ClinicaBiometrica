@@ -6,11 +6,11 @@ services:
     container_name: telemedicina_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: telemedicina
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
+      POSTGRES_DB: ${POSTGRES_DB:-telemedicina}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -20,11 +20,10 @@ services:
     restart: always
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://postgres:admin@db:5432/telemedicina
-      - SECRET_KEY=telemedicina2026
-      - ALGORITHM=HS256
-      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-admin}@db:5432/${POSTGRES_DB:-telemedicina}
     volumes:
       - .:/app
     depends_on:
