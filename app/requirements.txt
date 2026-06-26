@@ -2,6 +2,7 @@ fastapi
 uvicorn
 sqlalchemy
 psycopg2-binary
+PyMySQL
 python-jose
 passlib[bcrypt]
 python-dotenv
