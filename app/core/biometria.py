@@ -2,7 +2,7 @@ import numpy as np
 import json
 
 # Definimos el umbral de similitud sugerido en el plan (0.6)
-UMBRAL_CONFIGURADO = 0.6
+UMBRAL_CONFIGURADO = 0.5
 
 
 def verificar_similitud_facial(embedding_frontend: list, embedding_db_str: str) -> bool:
