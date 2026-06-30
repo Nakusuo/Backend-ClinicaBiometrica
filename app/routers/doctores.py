@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.models.doctor import Doctor
 from app.schemas.doctor import DoctorCreate
+import json
 
 router = APIRouter()
 
@@ -92,3 +93,17 @@ def eliminar_doctor(doctor_id: int, db: Session = Depends(get_db)):
     db.delete(doctor)
     db.commit()
     return {"mensaje": "Doctor eliminado"}
+
+@router.post("/{doctor_id}/biometria")
+def guardar_biometria_doctor(doctor_id: int, payload: dict, db: Session = Depends(get_db)):
+    doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor no encontrado")
+    
+    embedding = payload.get("embedding")
+    if not embedding:
+        raise HTTPException(status_code=400, detail="Falta el embedding facial")
+        
+    doctor.embedding_facial = json.dumps(embedding)
+    db.commit()
+    return {"mensaje": "Biometría registrada exitosamente"}

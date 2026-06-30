@@ -20,7 +20,6 @@ Gratis:
 
 - Ubuntu Server en VirtualBox.
 - Docker y Docker Compose.
-- FastAPI, Angular, PostgreSQL, MariaDB, Nginx.
 - FreePBX/Asterisk con modulos open source.
 - WireGuard para cifrar trafico entre servidores.
 - Cloudflare DNS y Cloudflare Tunnel para web/API HTTP/HTTPS.
@@ -416,6 +415,85 @@ server {
     }
 }
 ```
+
+### 12.1. Configuración de HTTPS con Let's Encrypt (Certbot)
+
+Para que el navegador permita acceder a la cámara (`getUserMedia`), la conexión **debe** realizarse mediante HTTPS (a menos que estés en `localhost`).
+
+#### Requisitos
+1. **Un dominio o subdominio** apuntando a la IP pública de tu servidor Ubuntu (puedes usar un dominio propio o uno gratuito como No-IP o DuckDNS).
+2. **Puertos abiertos** en el router o firewall del servidor: puerto `80` (HTTP) y `443` (HTTPS) abiertos hacia internet.
+
+#### Pasos para la configuración en Ubuntu:
+
+1. **Instalar Certbot y su extensión para Nginx:**
+   ```bash
+   sudo apt update
+   sudo apt install -y certbot python3-certbot-nginx
+   ```
+
+2. **Ejecutar Certbot para obtener y configurar el certificado automáticamente:**
+   Reemplaza `tu-dominio.com` con tu dominio real:
+   ```bash
+   sudo certbot --nginx -d tu-dominio.com
+   ```
+   * *Certbot te pedirá un correo para avisarte de renovaciones y te preguntará si quieres redirigir todo el tráfico HTTP a HTTPS de manera automática (elige **Sí / Redirect**).*
+
+3. **Verificar la renovación automática:**
+   Los certificados de Let's Encrypt duran 90 días, pero Ubuntu los renueva automáticamente. Puedes comprobar que la tarea funcione ejecutando:
+   ```bash
+   sudo certbot renew --dry-run
+   ```
+
+4. **Resultado de la Configuración en Nginx:**
+   Certbot modificará automáticamente tu archivo de configuración de Nginx (habitualmente `/etc/nginx/sites-available/default`) para que luzca similar a esto:
+   ```nginx
+   server {
+       listen 80;
+       server_name tu-dominio.com;
+       return 301 https://$host$request_uri; # Redirección automática a HTTPS
+   }
+
+   server {
+       listen 443 ssl; # Puerto seguro HTTPS
+       server_name tu-dominio.com;
+
+       ssl_certificate /etc/letsencrypt/live/tu-dominio.com/fullchain.pem;
+       ssl_certificate_key /etc/letsencrypt/live/tu-dominio.com/privkey.pem;
+       include /etc/letsencrypt/options-ssl-nginx.conf;
+       ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+       root /var/www/telemedicina;
+       index index.html;
+
+       location / {
+           try_files $uri $uri/ /index.html;
+       }
+
+       location /api/ {
+           proxy_pass http://127.0.0.1:8000/api/;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+
+       location /ws/ {
+           proxy_pass http://127.0.0.1:8000/ws/;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection "upgrade";
+           proxy_set_header Host $host;
+       }
+   }
+   ```
+
+5. **Actualizar el Frontend (Angular):**
+   Asegúrate de que en el frontend ([environment.prod.ts](file:///C:/Users/Lenovo/Desktop/Frontend-Biometria/src/environments/environment.prod.ts)) las rutas apunten de forma segura utilizando `https` y `wss`:
+   ```ts
+   apiUrl: 'https://tu-dominio.com/api',
+   wsUrl: 'wss://tu-dominio.com'
+   ```
 
 Con Nginx, el frontend puede usar:
 
