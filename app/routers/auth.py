@@ -38,7 +38,8 @@ def build_doctor_response(doctor: Doctor) -> dict:
         "especialidad": doctor.especialidad,
         "email": doctor.correo,
         "correo": doctor.correo,
-        "telefono": doctor.telefono
+        "telefono": doctor.telefono,
+        "has_biometrics": doctor.embedding_facial is not None and doctor.embedding_facial != ""
     }
 
 def build_patient_response(paciente: Paciente) -> dict:
@@ -54,7 +55,8 @@ def build_patient_response(paciente: Paciente) -> dict:
         "telefono": paciente.telefono,
         "fechaNacimiento": paciente.fecha_nacimiento,
         "fecha_nacimiento": paciente.fecha_nacimiento,
-        "direccion": paciente.direccion
+        "direccion": paciente.direccion,
+        "has_biometrics": paciente.embedding_facial is not None and paciente.embedding_facial != ""
     }
 
 @router.post("/login")
