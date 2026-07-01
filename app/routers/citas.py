@@ -127,3 +127,42 @@ def eliminar_cita(cita_id: int, db: Session = Depends(get_db), current_user = De
     db.delete(cita)
     db.commit()
     return {"mensaje": "Cita eliminada"}
+
+@router.post("/solicitar-consulta-inmediata")
+def solicitar_consulta_inmediata(payload: dict, db: Session = Depends(get_db)):
+    paciente_id = payload.get("paciente_id")
+    telefono = payload.get("telefono")
+    motivo = payload.get("motivo")
+    especialidad = payload.get("especialidad", "Medicina General")
+    
+    paciente = db.query(Paciente).filter(Paciente.id == paciente_id).first()
+    if not paciente:
+        raise HTTPException(status_code=404, detail="Paciente no encontrado")
+        
+    if telefono:
+        paciente.telefono = telefono
+        db.commit()
+        db.refresh(paciente)
+
+    # Buscar un médico según la especialidad
+    doctor = db.query(Doctor).filter(Doctor.especialidad == especialidad, Doctor.rol == "doctor").first()
+    if not doctor:
+        doctor = db.query(Doctor).filter(Doctor.rol == "doctor").first()
+        
+    if not doctor:
+        raise HTTPException(status_code=404, detail="No hay médicos disponibles en este momento.")
+
+    import datetime
+    cita = Cita(
+        paciente_id=paciente.id,
+        doctor_id=doctor.id,
+        fecha=datetime.date.today().strftime("%Y-%m-%d"),
+        hora=datetime.datetime.now().strftime("%I:%M %p"),
+        estado="en_curso",
+        motivo=motivo
+    )
+    db.add(cita)
+    db.commit()
+    db.refresh(cita)
+    
+    return map_cita(cita)

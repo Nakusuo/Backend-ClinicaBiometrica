@@ -39,7 +39,8 @@ def build_doctor_response(doctor: Doctor) -> dict:
         "email": doctor.correo,
         "correo": doctor.correo,
         "telefono": doctor.telefono,
-        "has_biometrics": doctor.embedding_facial is not None and doctor.embedding_facial != ""
+        "has_biometrics": doctor.embedding_facial is not None and doctor.embedding_facial != "",
+        "rol": doctor.rol
     }
 
 def build_patient_response(paciente: Paciente) -> dict:
@@ -64,7 +65,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     doctor = None
     paciente = None
 
-    if payload.role in (None, "doctor"):
+    if payload.role in (None, "doctor", "admin"):
         doctor = db.query(Doctor).filter(Doctor.correo == payload.correo).first()
     if payload.role in (None, "paciente"):
         paciente = db.query(Paciente).filter(Paciente.correo == payload.correo).first()
@@ -144,6 +145,28 @@ def register_patient(payload: PatientRegisterRequest, db: Session = Depends(get_
     db.add(paciente)
     db.commit()
     db.refresh(paciente)
+
+    # Crear cita de prueba automática para que puedan probar el "Click to Call"
+    try:
+        from app.models.cita import Cita
+        from app.models.doctor import Doctor
+        import datetime
+        
+        doctor = db.query(Doctor).filter(Doctor.rol == "doctor").first()
+        if doctor:
+            nueva_cita = Cita(
+                paciente_id=paciente.id,
+                doctor_id=doctor.id,
+                fecha=datetime.date.today().strftime("%Y-%m-%d"),
+                hora="10:30 AM",
+                estado="programada",
+                motivo="Chequeo General Preventivo"
+            )
+            db.add(nueva_cita)
+            db.commit()
+    except Exception as e:
+        print(f"Error al crear cita automática: {e}")
+
     return {"mensaje": "Paciente registrado exitosamente", "id": paciente.id}
 
 @router.post("/facial-login")

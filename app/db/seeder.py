@@ -14,8 +14,28 @@ def hash_password(password: str) -> str:
     return hashed.decode('utf-8')
 
 def seed_db(db: Session):
-    # Verificar si ya existen doctores
-    if db.query(Doctor).count() > 0:
+    # 0. Crear Administrador de prueba si no existe
+    admin_exists = db.query(Doctor).filter(Doctor.rol == "admin").first()
+    if not admin_exists:
+        admin = Doctor(
+            nombres="Administrador",
+            apellidos="Clínica",
+            correo="admin@email.com",
+            especialidad="Administrador",
+            cedula="ADM001",
+            telefono="+51 999 000 000",
+            password_hash=hash_password("admin123"),
+            embedding_facial=None,
+            rol="admin",
+            activo=True
+        )
+        db.add(admin)
+        db.flush()
+        print("Admin user seeded successfully!")
+
+    # Verificar si ya existen doctores comunes
+    if db.query(Doctor).filter(Doctor.rol == "doctor").count() > 0:
+        db.commit()
         return
 
     # 1. Crear Doctor de prueba
