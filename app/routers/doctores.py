@@ -4,6 +4,12 @@ from app.db.database import SessionLocal
 from app.models.doctor import Doctor
 from app.schemas.doctor import DoctorCreate
 import json
+import bcrypt
+
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
 
 router = APIRouter()
 
@@ -51,6 +57,8 @@ def crear_doctor(payload: DoctorCreate, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=400, detail="El correo ya se encuentra registrado.")
     
+    password_hash = hash_password(payload.password) if payload.password else None
+
     doctor = Doctor(
         nombres=payload.nombres,
         apellidos=payload.apellidos,
@@ -58,7 +66,7 @@ def crear_doctor(payload: DoctorCreate, db: Session = Depends(get_db)):
         especialidad=payload.especialidad,
         cedula=payload.cedula,
         telefono=payload.telefono,
-        password_hash=None, # Registro directo desde CRUD admin no requiere contraseña hash obligatoria inicial en el demo
+        password_hash=password_hash,
         embedding_facial=payload.embedding_facial,
         activo=payload.activo
     )
