@@ -61,3 +61,5 @@ Thumbs.db
 # --- Datos de prueba ---
 # data/
 # test_data/
+# --- Pruebas ---
+.pytest_cache/
