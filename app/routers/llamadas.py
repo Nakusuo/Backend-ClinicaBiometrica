@@ -1,10 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from app.db.database import get_db
 from app.models.cita import Cita
-from app.models.paciente import Paciente
-from app.models.doctor import Doctor
 from app.models.llamada import Llamada
 from app.core.tiempo import ahora_utc
 from app.core.security import (

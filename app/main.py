@@ -22,15 +22,8 @@ from app.routers import (
     freepbx
 )
 
-# Registra todos los modelos en Base.metadata (también los usa Alembic vía app.models)
-from app.models.doctor import Doctor
-from app.models.paciente import Paciente
-from app.models.cita import Cita
-from app.models.expediente import Expediente
-from app.models.consulta import Consulta
-from app.models.receta import Receta
-from app.models.examen import Examen
-from app.models.llamada import Llamada
+# Registra todos los modelos en Base.metadata
+import app.models  # noqa: F401
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("telemedicina")

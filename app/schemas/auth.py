@@ -1,8 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Annotated, List, Literal, Optional
+from typing import Literal, Optional
 
-# face-api.js produce descriptores de 128 valores
-Embedding = Annotated[List[float], Field(min_length=128, max_length=128)]
+from app.schemas.tipos import Embedding, FechaNacimiento
 
 class FacialLoginRequest(BaseModel):
     correo: EmailStr
@@ -29,6 +28,6 @@ class PatientRegisterRequest(BaseModel):
     dni: str
     email: EmailStr
     telefono: str
-    fechaNacimiento: str
+    fechaNacimiento: FechaNacimiento
     password: str = Field(min_length=8)
     faceEmbedding: Optional[Embedding] = None

@@ -1,9 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
+from app.core.tiempo import calcular_edad
 from app.models.cita import Cita
-from app.models.paciente import Paciente
-from app.models.doctor import Doctor
 from app.schemas.cita import CitaCreate, CitaUpdateEstado
 from app.core.security import (
     get_current_user,
@@ -20,20 +19,13 @@ router = APIRouter()
 def map_cita(c: Cita) -> dict:
     if not c:
         return None
-    age = 30
+    age = None
     patient_name = "Paciente Desconocido"
     if c.paciente:
         patient_name = f"{c.paciente.nombres} {c.paciente.apellidos}"
-        if c.paciente.fecha_nacimiento:
-            try:
-                parts = c.paciente.fecha_nacimiento.split("-")
-                if len(parts) == 3:
-                    birth_year = int(parts[0])
-                    age = 2026 - birth_year
-            except:
-                pass
+        age = calcular_edad(c.paciente.fecha_nacimiento)
 
-    doctor_name = "Dr. de Turno"
+    doctor_name = None
     if c.doctor:
         doctor_name = f"{c.doctor.nombres} {c.doctor.apellidos}"
 
