@@ -1,23 +1,18 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
-from app.db.database import SessionLocal
+from app.db.database import get_db
 from app.models.cita import Cita
 from app.models.llamada import Llamada
 from app.models.paciente import Paciente
 from app.models.doctor import Doctor
 from datetime import datetime
-from app.core.config import settings
+from app.core.security import verificar_token_webhook
+from app.core.ws_manager import manager
 
-router = APIRouter()
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# Todos los webhooks exigen el header X-Webhook-Token
+router = APIRouter(dependencies=[Depends(verificar_token_webhook)])
 
 class WebhookCitaPayload(BaseModel):
     cita_id: Optional[int] = None
@@ -51,7 +46,7 @@ def webhook_citas(payload: WebhookCitaPayload, db: Session = Depends(get_db)):
     cita = None
     if payload.cita_id:
         cita = db.query(Cita).filter(Cita.id == payload.cita_id).first()
-    
+
     if cita:
         cita.fecha = payload.fecha
         cita.hora = payload.hora
@@ -67,7 +62,7 @@ def webhook_citas(payload: WebhookCitaPayload, db: Session = Depends(get_db)):
             estado=payload.estado
         )
         db.add(cita)
-    
+
     db.commit()
     db.refresh(cita)
     return {
@@ -80,17 +75,14 @@ def webhook_citas(payload: WebhookCitaPayload, db: Session = Depends(get_db)):
 async def webhook_asterisk_event(
     payload: AsteriskEventPayload,
     db: Session = Depends(get_db),
-    x_webhook_token: Optional[str] = Header(default=None),
 ):
-    if settings.asterisk_webhook_token and x_webhook_token != settings.asterisk_webhook_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de webhook inválido.")
 
     # 1. Search for patient by phone or DNI
     paciente = db.query(Paciente).filter(
         (Paciente.dni == payload.caller_id) | 
         (Paciente.telefono == payload.caller_id)
     ).first()
-    
+
     # 2. Search for doctor by phone or cedula
     doctor = db.query(Doctor).filter(
         (Doctor.cedula == payload.exten) | 
@@ -127,7 +119,6 @@ async def webhook_asterisk_event(
         db.refresh(llamada)
 
     # 3. Notify doctor via WebSocket
-    from app.main import manager
     if doctor:
         doctor_id_str = str(doctor.id)
         await manager.send_personal_message(

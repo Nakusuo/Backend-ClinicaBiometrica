@@ -1,0 +1,3 @@
+# Solo para poc_biometria.py (prueba de concepto con DeepFace). La API no lo necesita.
+deepface
+opencv-python

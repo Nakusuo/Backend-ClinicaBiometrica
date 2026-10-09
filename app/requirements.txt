@@ -1,12 +1,10 @@
 fastapi
-uvicorn
+uvicorn[standard]
 sqlalchemy
 psycopg2-binary
 PyMySQL
 python-jose
-passlib[bcrypt]
+bcrypt
 python-dotenv
 pydantic[email]
-deepface
 numpy
-opencv-python

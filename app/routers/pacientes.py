@@ -1,21 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.db.database import SessionLocal
+from app.db.database import get_db
 from app.models.paciente import Paciente
 from app.models.expediente import Expediente
 from app.models.consulta import Consulta
 from app.models.receta import Receta
 from app.schemas.paciente import PacienteCreate
 from app.schemas.expediente import ExpedienteCreate
+from app.core.security import get_current_doctor, get_current_user, exigir_doctor_o_mismo_paciente
 
 router = APIRouter()
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 def map_paciente(p: Paciente) -> dict:
     if not p:
@@ -35,8 +29,6 @@ def map_paciente(p: Paciente) -> dict:
         "direccion": p.direccion,
         "created_at": p.created_at
     }
-
-from app.core.security import get_current_doctor, get_current_user, get_current_patient
 
 @router.get("/")
 def listar_pacientes(db: Session = Depends(get_db), current_doctor = Depends(get_current_doctor)):
@@ -78,13 +70,14 @@ def buscar_pacientes(
 
 @router.get("/{paciente_id}")
 def obtener_paciente(paciente_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    exigir_doctor_o_mismo_paciente(current_user, paciente_id)
     paciente = db.query(Paciente).filter(Paciente.id == paciente_id).first()
     if not paciente:
         raise HTTPException(status_code=404, detail="Paciente no encontrado")
     return map_paciente(paciente)
 
 @router.post("/")
-def crear_paciente(payload: PacienteCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+def crear_paciente(payload: PacienteCreate, db: Session = Depends(get_db), current_doctor = Depends(get_current_doctor)):
     existing = db.query(Paciente).filter(Paciente.dni == payload.dni).first()
     if existing:
         return map_paciente(existing)
@@ -105,6 +98,7 @@ def crear_paciente(payload: PacienteCreate, db: Session = Depends(get_db), curre
 
 @router.put("/{paciente_id}")
 def actualizar_paciente(paciente_id: int, payload: PacienteCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    exigir_doctor_o_mismo_paciente(current_user, paciente_id)
     paciente = db.query(Paciente).filter(Paciente.id == paciente_id).first()
     if not paciente:
         raise HTTPException(status_code=404, detail="Paciente no encontrado")
@@ -133,6 +127,7 @@ def eliminar_paciente(paciente_id: int, db: Session = Depends(get_db), current_d
 # Adaptación del endpoint de expediente clínico por ID de paciente
 @router.get("/{paciente_id}/expediente")
 def obtener_expediente_paciente(paciente_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    exigir_doctor_o_mismo_paciente(current_user, paciente_id)
     expediente = db.query(Expediente).filter(Expediente.paciente_id == paciente_id).first()
     if not expediente:
         return {
@@ -171,8 +166,8 @@ def obtener_expediente_paciente(paciente_id: int, db: Session = Depends(get_db),
 
 @router.put("/{paciente_id}/expediente")
 def actualizar_expediente_paciente(paciente_id: int, payload: ExpedienteCreate, db: Session = Depends(get_db), current_doctor = Depends(get_current_doctor)):
-    p_id = payload.patientId or paciente_id
-    d_id = payload.doctorId or payload.doctor_id
+    p_id = paciente_id
+    d_id = current_doctor.id
     
     expediente = db.query(Expediente).filter(Expediente.paciente_id == p_id).first()
     if not expediente:
