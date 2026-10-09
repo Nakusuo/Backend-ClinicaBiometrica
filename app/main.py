@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, status
 
 from app.db.database import Base, engine, SessionLocal
@@ -55,22 +57,34 @@ def startup():
     finally:
         db.close()
 
-# El cliente se conecta a /ws/{role}/{user_id}?token=<JWT>.
-# El rol y el id deben coincidir con el dueño del token.
+# Segundos que tiene el cliente para enviar {"type": "auth", "token": "<JWT>"} tras conectarse
+WS_AUTH_TIMEOUT = 10
+
+# El cliente se conecta a /ws/{role}/{user_id} y su primer mensaje debe ser
+# {"type": "auth", "token": "<JWT>"}. El token no va en la URL para que no quede en los logs
+# de acceso de uvicorn/Nginx. El rol y el id deben coincidir con el dueño del token.
 @app.websocket("/ws/{role}/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, role: str, user_id: str):
-    token = websocket.query_params.get("token")
-    db = SessionLocal()
+    await websocket.accept()
     try:
-        user = obtener_usuario_desde_token(token, db) if token else None
-    finally:
-        db.close()
+        auth = await asyncio.wait_for(websocket.receive_json(), timeout=WS_AUTH_TIMEOUT)
+    except (asyncio.TimeoutError, WebSocketDisconnect, ValueError):
+        auth = None
+
+    token = auth.get("token") if isinstance(auth, dict) and auth.get("type") == "auth" else None
+    user = None
+    if isinstance(token, str):
+        db = SessionLocal()
+        try:
+            user = obtener_usuario_desde_token(token, db)
+        finally:
+            db.close()
 
     if user is None or rol_de(user) != role or str(user.id) != user_id:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
-    await manager.connect(websocket, role, user_id)
+    manager.register(websocket, role, user_id)
     try:
         while True:
             data = await websocket.receive_json()

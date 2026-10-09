@@ -101,5 +101,6 @@ def verificar_token_webhook(x_webhook_token: str | None = Header(default=None)) 
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Webhooks deshabilitados: falta configurar ASTERISK_WEBHOOK_TOKEN.",
         )
-    if not x_webhook_token or not hmac.compare_digest(x_webhook_token, esperado):
+    # compare_digest con str falla si hay caracteres no ASCII; se compara en bytes
+    if not x_webhook_token or not hmac.compare_digest(x_webhook_token.encode(), esperado.encode()):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de webhook inválido.")

@@ -180,17 +180,24 @@ def test_webhooks_exigen_token(client, datos):
 def test_websocket_sin_token_se_cierra(client, datos):
     with pytest.raises(WebSocketDisconnect):
         with client.websocket_connect(f"/ws/doctor/{datos['doctor']}") as ws:
+            ws.send_json({"type": "signal", "target_role": "paciente", "target_id": 1})
             ws.receive_json()
 
 
 def test_websocket_no_permite_suplantar_a_otro_usuario(client, datos, h_paciente_a):
     token = h_paciente_a["Authorization"].split()[1]
     with pytest.raises(WebSocketDisconnect):
-        with client.websocket_connect(f"/ws/doctor/{datos['doctor']}?token={token}") as ws:
+        with client.websocket_connect(f"/ws/doctor/{datos['doctor']}") as ws:
+            ws.send_json({"type": "auth", "token": token})
             ws.receive_json()
 
 
-def test_websocket_con_token_propio_conecta(client, datos, h_doctor):
-    token = h_doctor["Authorization"].split()[1]
-    with client.websocket_connect(f"/ws/doctor/{datos['doctor']}?token={token}") as ws:
-        ws.send_json({"type": "ping"})
+def test_websocket_con_token_propio_recibe_mensajes(client, datos, h_doctor, h_paciente_a):
+    token_doctor = h_doctor["Authorization"].split()[1]
+    token_paciente = h_paciente_a["Authorization"].split()[1]
+    with client.websocket_connect(f"/ws/doctor/{datos['doctor']}") as ws_doc,          client.websocket_connect(f"/ws/paciente/{datos['paciente_a']}") as ws_pac:
+        ws_doc.send_json({"type": "auth", "token": token_doctor})
+        ws_pac.send_json({"type": "auth", "token": token_paciente})
+        ws_pac.send_json({"type": "signal", "target_role": "doctor", "target_id": datos["doctor"], "data": "hola"})
+        msg = ws_doc.receive_json()
+        assert msg["type"] == "signal" and msg["sender_role"] == "paciente" and msg["data"] == "hola"
