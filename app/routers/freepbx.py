@@ -3,7 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.db.freepbx import get_freepbx_db
-from app.core.security import get_current_user
+from app.core.security import get_current_doctor
 
 router = APIRouter()
 
@@ -11,7 +11,7 @@ router = APIRouter()
 @router.get("/cdr")
 def listar_cdr(
     limit: int = Query(default=20, ge=1, le=100),
-    current_user=Depends(get_current_user),
+    current_doctor=Depends(get_current_doctor),
 ):
     db = get_freepbx_db()
     if db is None:

@@ -126,15 +126,27 @@ nano .env
 Configura `.env`:
 
 ```env
+ENVIRONMENT=production
+
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=una_clave_fuerte
 POSTGRES_DB=telemedicina
 
-SECRET_KEY=otra_clave_larga_y_secreta
+# Mínimo 32 caracteres. Genera una con:
+#   python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+SECRET_KEY=pega_aqui_la_clave_generada
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 
 CORS_ORIGINS=http://IP_UBUNTU,http://localhost:4200
+
+# En producción no se cargan datos de prueba
+SEED_DEMO_DATA=false
+DOCTOR_REQUIRES_APPROVAL=true
+
+# 127.0.0.1 = la API solo es accesible a través de Nginx.
+# Usa 0.0.0.0 solo mientras pruebas sin Nginx.
+API_BIND_ADDRESS=127.0.0.1
 
 ASTERISK_WEBHOOK_TOKEN=token_largo_para_freepbx
 
@@ -152,10 +164,25 @@ docker compose up -d --build
 docker compose logs -f web
 ```
 
-Prueba:
+Prueba (desde el propio servidor, porque la API escucha solo en 127.0.0.1):
 
-```text
-http://IP_UBUNTU:8000/docs
+```bash
+curl http://127.0.0.1:8000/
+```
+
+Si necesitas abrir `http://IP_UBUNTU:8000/docs` desde otra máquina antes de configurar Nginx,
+pon `API_BIND_ADDRESS=0.0.0.0` en `.env`, ejecuta `docker compose up -d` y vuelve a `127.0.0.1` al terminar.
+
+Con `ENVIRONMENT=production` la API no arranca si `SECRET_KEY` es corta o de ejemplo,
+ni si `SEED_DEMO_DATA=true`. Si `docker compose logs web` muestra ese error, corrige `.env`.
+
+### Aprobar médicos
+
+Los médicos que se registran desde la web quedan inactivos. Un médico activo los aprueba con:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/doctores/ID_DEL_MEDICO/activar \
+  -H "Authorization: Bearer TOKEN_DE_UN_MEDICO_ACTIVO"
 ```
 
 ## 5. PostgreSQL clinico
@@ -322,6 +349,9 @@ Cuando uses Nginx, puedes cerrar el puerto 8000 publico:
 ```bash
 sudo ufw delete allow 8000/tcp
 ```
+
+Ojo: Docker publica puertos saltándose las reglas de `ufw`. Cerrar el 8000 en `ufw` no basta;
+lo que realmente lo protege es `API_BIND_ADDRESS=127.0.0.1` en `.env`.
 
 En FreePBX, no publiques MariaDB a internet. Permite 3306 solo desde Ubuntu o WireGuard.
 

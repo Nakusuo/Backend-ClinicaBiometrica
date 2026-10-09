@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.db.database import SessionLocal
+from app.db.database import get_db
+from app.core.config import settings
 from app.models.doctor import Doctor
 from app.models.paciente import Paciente
 from app.schemas.auth import FacialLoginRequest, DoctorRegisterRequest, PatientRegisterRequest, LoginRequest
@@ -10,13 +11,6 @@ import bcrypt
 import json
 
 router = APIRouter()
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
@@ -70,10 +64,10 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         paciente = db.query(Paciente).filter(Paciente.correo == payload.correo).first()
 
     if doctor:
-        if not doctor.activo:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="El médico está inactivo.")
         if not verify_password(payload.password, doctor.password_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas.")
+        if not doctor.activo:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tu cuenta de médico aún no ha sido aprobada.")
         token = create_access_token(data={"sub": doctor.correo, "rol": "doctor", "doctor_id": doctor.id})
         return {
             "access_token": token,
@@ -111,12 +105,18 @@ def register_doctor(payload: DoctorRegisterRequest, db: Session = Depends(get_db
         password_hash=hash_password(payload.password),
         embedding_facial=json.dumps(payload.faceEmbedding),
         rol="doctor",
-        activo=True
+        activo=not settings.doctor_requires_approval
     )
     db.add(doctor)
     db.commit()
     db.refresh(doctor)
-    return {"mensaje": "Doctor registrado exitosamente", "id": doctor.id}
+    if not doctor.activo:
+        return {
+            "mensaje": "Registro recibido. Un médico activo debe aprobar tu cuenta antes de que puedas ingresar.",
+            "id": doctor.id,
+            "pendiente_aprobacion": True
+        }
+    return {"mensaje": "Doctor registrado exitosamente", "id": doctor.id, "pendiente_aprobacion": False}
 
 @router.post("/register-patient")
 def register_patient(payload: PatientRegisterRequest, db: Session = Depends(get_db)):
@@ -148,18 +148,22 @@ def register_patient(payload: PatientRegisterRequest, db: Session = Depends(get_
 
 @router.post("/facial-login")
 def facial_login(payload: FacialLoginRequest, db: Session = Depends(get_db)):
-    # 1. Buscar en Doctores primero
-    doctor = db.query(Doctor).filter(Doctor.correo == payload.correo).first()
-    
-    if doctor:
-        if not doctor.activo:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="El médico está inactivo.")
-        if not doctor.embedding_facial:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El médico no cuenta con registro biométrico.")
+    # Mismo mensaje para "no existe", "sin biometría" y "rostro distinto",
+    # así no se puede averiguar qué correos están registrados.
+    credenciales_invalidas = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Credenciales biométricas inválidas."
+    )
 
-        es_valido = verificar_similitud_facial(payload.embedding_facial, doctor.embedding_facial)
-        if not es_valido:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Autenticación biométrica fallida.")
+    doctor = None
+    if payload.role in (None, "doctor"):
+        doctor = db.query(Doctor).filter(Doctor.correo == payload.correo).first()
+
+    if doctor:
+        if not verificar_similitud_facial(payload.embedding_facial, doctor.embedding_facial):
+            raise credenciales_invalidas
+        if not doctor.activo:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tu cuenta de médico aún no ha sido aprobada.")
 
         token_data = {"sub": doctor.correo, "rol": "doctor", "doctor_id": doctor.id}
         token = create_access_token(data=token_data)
@@ -170,15 +174,13 @@ def facial_login(payload: FacialLoginRequest, db: Session = Depends(get_db)):
             "doctor": build_doctor_response(doctor)
         }
 
-    # 2. Si no es doctor, buscar en Pacientes
-    paciente = db.query(Paciente).filter(Paciente.correo == payload.correo).first()
-    if paciente:
-        if not paciente.embedding_facial:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El paciente no cuenta con registro biométrico.")
+    paciente = None
+    if payload.role in (None, "paciente"):
+        paciente = db.query(Paciente).filter(Paciente.correo == payload.correo).first()
 
-        es_valido = verificar_similitud_facial(payload.embedding_facial, paciente.embedding_facial)
-        if not es_valido:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Autenticación biométrica fallida.")
+    if paciente:
+        if not verificar_similitud_facial(payload.embedding_facial, paciente.embedding_facial):
+            raise credenciales_invalidas
 
         token_data = {"sub": paciente.correo, "rol": "paciente", "patient_id": paciente.id}
         token = create_access_token(data=token_data)
@@ -189,4 +191,4 @@ def facial_login(payload: FacialLoginRequest, db: Session = Depends(get_db)):
             "patient": build_patient_response(paciente)
         }
 
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no registrado en el sistema.")
+    raise credenciales_invalidas

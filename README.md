@@ -101,6 +101,16 @@ Uvicorn running on http://127.0.0.1:8000
 
 ---
 
+## Pruebas de seguridad
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Comprueban que cada usuario solo accede a lo suyo (pacientes, citas, expedientes, llamadas, WebSocket)
+y que el login facial no se puede burlar.
+
 ## Acceso a Swagger
 
 Una vez iniciado el servidor, abrir en el navegador:

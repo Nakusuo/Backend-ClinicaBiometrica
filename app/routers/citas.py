@@ -1,20 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.db.database import SessionLocal
+from app.db.database import get_db
 from app.models.cita import Cita
 from app.models.paciente import Paciente
 from app.models.doctor import Doctor
 from app.schemas.cita import CitaCreate, CitaUpdateEstado
-from app.core.security import get_current_user, get_current_doctor, get_current_patient
+from app.core.security import (
+    get_current_user,
+    get_current_doctor,
+    es_doctor,
+    es_paciente,
+    prohibido,
+    exigir_doctor_o_mismo_paciente,
+    exigir_participante_de_cita,
+)
 
 router = APIRouter()
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 def map_cita(c: Cita) -> dict:
     if not c:
@@ -31,7 +32,7 @@ def map_cita(c: Cita) -> dict:
                     age = 2026 - birth_year
             except:
                 pass
-                
+
     doctor_name = "Dr. de Turno"
     if c.doctor:
         doctor_name = f"{c.doctor.nombres} {c.doctor.apellidos}"
@@ -56,16 +57,23 @@ def map_cita(c: Cita) -> dict:
 
 @router.get("/")
 def listar_citas(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    citas = db.query(Cita).all()
+    # Cada usuario ve solo sus propias citas
+    if es_doctor(current_user):
+        citas = db.query(Cita).filter(Cita.doctor_id == current_user.id).all()
+    else:
+        citas = db.query(Cita).filter(Cita.paciente_id == current_user.id).all()
     return [map_cita(c) for c in citas]
 
 @router.get("/doctor/{doctor_id}")
 def listar_citas_doctor(doctor_id: int, db: Session = Depends(get_db), current_doctor = Depends(get_current_doctor)):
+    if current_doctor.id != doctor_id:
+        raise prohibido("Solo puedes ver tu propia agenda")
     citas = db.query(Cita).filter(Cita.doctor_id == doctor_id).all()
     return [map_cita(c) for c in citas]
 
 @router.get("/paciente/{patient_id}")
-def listar_citas_paciente(patient_id: int, db: Session = Depends(get_db), current_patient = Depends(get_current_patient)):
+def listar_citas_paciente(patient_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    exigir_doctor_o_mismo_paciente(current_user, patient_id)
     citas = db.query(Cita).filter(Cita.paciente_id == patient_id).all()
     return [map_cita(c) for c in citas]
 
@@ -74,10 +82,16 @@ def obtener_cita(cita_id: int, db: Session = Depends(get_db), current_user = Dep
     cita = db.query(Cita).filter(Cita.id == cita_id).first()
     if not cita:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
+    exigir_participante_de_cita(current_user, cita)
     return map_cita(cita)
 
 @router.post("/")
 def crear_cita(payload: CitaCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    # Un paciente solo agenda citas para sí mismo; un médico solo en su propia agenda
+    if es_paciente(current_user) and payload.paciente_id != current_user.id:
+        raise prohibido("Solo puedes agendar citas a tu nombre")
+    if es_doctor(current_user) and payload.doctor_id != current_user.id:
+        raise prohibido("Solo puedes agendar citas en tu propia agenda")
     cita = Cita(
         paciente_id=payload.paciente_id,
         doctor_id=payload.doctor_id,
@@ -96,14 +110,13 @@ def actualizar_cita(cita_id: int, payload: CitaCreate, db: Session = Depends(get
     cita = db.query(Cita).filter(Cita.id == cita_id).first()
     if not cita:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
-    
-    cita.paciente_id = payload.paciente_id
-    cita.doctor_id = payload.doctor_id
+    exigir_participante_de_cita(current_user, cita)
+    # El médico y el paciente de una cita no se cambian por esta vía
     cita.fecha = payload.fecha
     cita.hora = payload.hora
     cita.estado = payload.estado
     cita.motivo = payload.motivo
-    
+
     db.commit()
     db.refresh(cita)
     return map_cita(cita)
@@ -113,7 +126,8 @@ def actualizar_cita_estado(cita_id: int, payload: CitaUpdateEstado, db: Session 
     cita = db.query(Cita).filter(Cita.id == cita_id).first()
     if not cita:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
-    
+    exigir_participante_de_cita(current_user, cita)
+
     cita.estado = payload.estado
     db.commit()
     db.refresh(cita)
@@ -124,6 +138,7 @@ def eliminar_cita(cita_id: int, db: Session = Depends(get_db), current_user = De
     cita = db.query(Cita).filter(Cita.id == cita_id).first()
     if not cita:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
+    exigir_participante_de_cita(current_user, cita)
     db.delete(cita)
     db.commit()
     return {"mensaje": "Cita eliminada"}
