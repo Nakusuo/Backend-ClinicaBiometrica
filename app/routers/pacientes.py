@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.paciente import Paciente
@@ -7,7 +7,9 @@ from app.models.consulta import Consulta
 from app.models.receta import Receta
 from app.schemas.paciente import PacienteCreate
 from app.schemas.expediente import ExpedienteCreate
-from app.core.security import get_current_doctor, get_current_user, exigir_doctor_o_mismo_paciente
+from app.core.security import get_current_doctor, get_current_patient, get_current_user, exigir_doctor_o_mismo_paciente, prohibido
+from app.schemas.biometria import BiometriaRequest
+import json
 
 router = APIRouter()
 
@@ -27,7 +29,19 @@ def map_paciente(p: Paciente) -> dict:
         "fecha_nacimiento": p.fecha_nacimiento,
         "fechaNacimiento": p.fecha_nacimiento,  # Compatibilidad con Angular
         "direccion": p.direccion,
+        "genero": p.genero,
+        "has_biometrics": bool(p.embedding_facial),
         "created_at": p.created_at
+    }
+
+def resumen_clinico(paciente_id: int, db: Session) -> dict:
+    """Datos del expediente que se muestran junto al paciente. None si no se registraron."""
+    e = db.query(Expediente).filter(Expediente.paciente_id == paciente_id).first()
+    grupo = f"{e.grupo_sanguineo}{e.factor_rh or ''}" if e and e.grupo_sanguineo else None
+    return {
+        "grupoSanguineo": grupo,
+        "alergias": e.alergias_conocidas if e else None,
+        "padecimientosCronicos": e.padecimientos_cronicos if e else None,
     }
 
 @router.get("/")
@@ -44,7 +58,7 @@ def buscar_pacientes(
     current_doctor = Depends(get_current_doctor)
 ):
     db_query = db.query(Paciente)
-    
+
     if query:
         search_pattern = f"%{query}%"
         db_query = db_query.filter(
@@ -61,10 +75,10 @@ def buscar_pacientes(
                 (Paciente.nombres.ilike(search_pattern)) |
                 (Paciente.apellidos.ilike(search_pattern))
             )
-            
+
     if not query and not dni and not nombre:
         return []
-        
+
     pacientes = db_query.all()
     return [map_paciente(p) for p in pacientes]
 
@@ -74,7 +88,15 @@ def obtener_paciente(paciente_id: int, db: Session = Depends(get_db), current_us
     paciente = db.query(Paciente).filter(Paciente.id == paciente_id).first()
     if not paciente:
         raise HTTPException(status_code=404, detail="Paciente no encontrado")
-    return map_paciente(paciente)
+    return {**map_paciente(paciente), **resumen_clinico(paciente_id, db)}
+
+@router.post("/{paciente_id}/biometria")
+def guardar_biometria_paciente(paciente_id: int, payload: BiometriaRequest, db: Session = Depends(get_db), current_patient = Depends(get_current_patient)):
+    if current_patient.id != paciente_id:
+        raise prohibido("Solo puedes registrar tu propio rostro")
+    current_patient.embedding_facial = json.dumps(payload.embedding)
+    db.commit()
+    return {"mensaje": "Biometría registrada exitosamente"}
 
 @router.post("/")
 def crear_paciente(payload: PacienteCreate, db: Session = Depends(get_db), current_doctor = Depends(get_current_doctor)):
@@ -89,7 +111,8 @@ def crear_paciente(payload: PacienteCreate, db: Session = Depends(get_db), curre
         telefono=payload.telefono,
         correo=payload.email,
         fecha_nacimiento=payload.fechaNacimiento,
-        direccion=payload.direccion or ""
+        direccion=payload.direccion or "",
+        genero=payload.genero
     )
     db.add(paciente)
     db.commit()
@@ -102,7 +125,7 @@ def actualizar_paciente(paciente_id: int, payload: PacienteCreate, db: Session =
     paciente = db.query(Paciente).filter(Paciente.id == paciente_id).first()
     if not paciente:
         raise HTTPException(status_code=404, detail="Paciente no encontrado")
-    
+
     paciente.dni = payload.dni
     paciente.nombres = payload.nombre
     paciente.apellidos = payload.apellido
@@ -110,7 +133,9 @@ def actualizar_paciente(paciente_id: int, payload: PacienteCreate, db: Session =
     paciente.correo = payload.email
     paciente.fecha_nacimiento = payload.fechaNacimiento
     paciente.direccion = payload.direccion or ""
-    
+    if payload.genero is not None:
+        paciente.genero = payload.genero
+
     db.commit()
     db.refresh(paciente)
     return map_paciente(paciente)
@@ -139,17 +164,17 @@ def obtener_expediente_paciente(paciente_id: int, db: Session = Depends(get_db),
             "notas": "No se encontraron registros clínicos.",
             "fecha": ""
         }
-        
+
     consulta = db.query(Consulta).filter(Consulta.expediente_id == expediente.id).order_by(Consulta.id.desc()).first()
     receta = db.query(Receta).filter(Receta.consulta_id == consulta.id).first() if consulta else None
-    
+
     fecha_str = ""
     if consulta and consulta.fecha_consulta:
         if isinstance(consulta.fecha_consulta, str):
             fecha_str = consulta.fecha_consulta
         else:
             fecha_str = consulta.fecha_consulta.strftime("%Y-%m-%d")
-            
+
     return {
         "id": expediente.id,
         "paciente_id": paciente_id,
@@ -168,15 +193,11 @@ def obtener_expediente_paciente(paciente_id: int, db: Session = Depends(get_db),
 def actualizar_expediente_paciente(paciente_id: int, payload: ExpedienteCreate, db: Session = Depends(get_db), current_doctor = Depends(get_current_doctor)):
     p_id = paciente_id
     d_id = current_doctor.id
-    
+
     expediente = db.query(Expediente).filter(Expediente.paciente_id == p_id).first()
     if not expediente:
         expediente = Expediente(
             paciente_id=p_id,
-            alergias_conocidas="Ninguna",
-            padecimientos_cronicos="Ninguno",
-            grupo_sanguineo="O",
-            factor_rh="+"
         )
         db.add(expediente)
         db.flush()
@@ -200,14 +221,9 @@ def actualizar_expediente_paciente(paciente_id: int, payload: ExpedienteCreate, 
         consulta_id=consulta.id,
         paciente_id=p_id,
         doctor_id=d_id,
-        nombre_medicamento=payload.tratamiento,
-        concentracion="según receta",
-        presentacion="tabletas",
-        dosis="según indicación",
-        frecuencia="cada 8 horas",
-        duracion_tratamiento="7 días"
+        nombre_medicamento=payload.tratamiento
     )
     db.add(receta)
     db.commit()
-    
+
     return {"mensaje": "Expediente actualizado exitosamente"}
