@@ -31,6 +31,8 @@ class Settings:
     freepbx_db_user: str | None = os.getenv("FREEPBX_DB_USER")
     freepbx_db_password: str | None = os.getenv("FREEPBX_DB_PASSWORD")
     freepbx_db_name: str = os.getenv("FREEPBX_DB_NAME", "asteriskcdrdb")
+    # Aplica las migraciones pendientes al arrancar la API (python -m app.db.migrar)
+    auto_migrate: bool = _bool("AUTO_MIGRATE", "true")
     # Datos de prueba (médico y paciente demo). Nunca activarlo en producción.
     seed_demo_data: bool = _bool("SEED_DEMO_DATA", "false")
     # Los médicos que se registran solos quedan inactivos hasta que otro médico los active

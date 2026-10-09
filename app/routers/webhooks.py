@@ -7,7 +7,7 @@ from app.models.cita import Cita
 from app.models.llamada import Llamada
 from app.models.paciente import Paciente
 from app.models.doctor import Doctor
-from datetime import datetime
+from app.core.tiempo import ahora_utc
 from app.core.security import verificar_token_webhook
 from app.core.ws_manager import manager
 
@@ -108,9 +108,9 @@ async def webhook_asterisk_event(
     if llamada:
         llamada.estado = current_status
         if payload.event == "answered":
-            llamada.start_time = datetime.utcnow()
+            llamada.start_time = ahora_utc()
         elif payload.event == "hangup":
-            llamada.end_time = datetime.utcnow()
+            llamada.end_time = ahora_utc()
             if payload.duration:
                 llamada.duracion = payload.duration
             elif llamada.start_time:

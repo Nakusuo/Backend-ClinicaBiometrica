@@ -9,6 +9,8 @@ os.environ["ASTERISK_WEBHOOK_TOKEN"] = "token-webhook-pruebas"
 os.environ["SEED_DEMO_DATA"] = "false"
 os.environ["DOCTOR_REQUIRES_APPROVAL"] = "true"
 os.environ["ENVIRONMENT"] = "development"
+# Los tests crean las tablas con create_all; las migraciones se prueban en test_migraciones.py
+os.environ["AUTO_MIGRATE"] = "false"
 
 import json  # noqa: E402
 
