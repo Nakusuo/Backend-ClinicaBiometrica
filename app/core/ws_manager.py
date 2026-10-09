@@ -9,8 +9,8 @@ class ConnectionManager:
         # Almacena las conexiones en formato "role:user_id" -> WebSocket
         self.active_connections: Dict[str, WebSocket] = {}
 
-    async def connect(self, websocket: WebSocket, role: str, user_id: str):
-        await websocket.accept()
+    def register(self, websocket: WebSocket, role: str, user_id: str):
+        """Guarda un socket ya aceptado y autenticado."""
         key = f"{role}:{user_id}"
         self.active_connections[key] = websocket
         print(f"WS Conectado: {key}. Conexiones activas: {len(self.active_connections)}")
