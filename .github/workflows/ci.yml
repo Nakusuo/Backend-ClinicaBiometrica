@@ -11,7 +11,8 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15-alpine
+        # Espejo oficial en AWS ECR Public: Docker Hub limita las descargas sin autenticación
+        image: public.ecr.aws/docker/library/postgres:15-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -59,4 +60,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Construir imagen
-        run: docker build -t telemedicina-api .
+        run: docker build --build-arg PYTHON_IMAGE=public.ecr.aws/docker/library/python:3.12-slim -t telemedicina-api .
