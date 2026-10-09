@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://github.com/Nakusuo"><img src="https://raw.githubusercontent.com/Nakusuo/Nakusuo/main/assets/covers/Backend-ClinicaBiometrica.svg" width="100%" alt="Backend-ClinicaBiometrica — Nakusu"/></a>
+</p>
+
 # Backend Clínico - Plataforma de Telemedicina Integrada
 
 Backend desarrollado con **FastAPI** y **PostgreSQL** para la gestión de pacientes, doctores, citas y expedientes médicos.
