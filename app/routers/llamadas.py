@@ -1,12 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from app.db.database import get_db
 from app.models.cita import Cita
-from app.models.paciente import Paciente
-from app.models.doctor import Doctor
 from app.models.llamada import Llamada
-from datetime import datetime
+from app.core.tiempo import ahora_utc
 from app.core.security import (
     get_current_user,
     get_current_doctor,
@@ -47,7 +45,7 @@ async def solicitar_llamada(payload: SolicitarLlamadaRequest, db: Session = Depe
             doctor_id=cita.doctor_id,
             room_id=f"room_{payload.cita_id}",
             estado="esperando",
-            start_time=datetime.utcnow()
+            start_time=ahora_utc()
         )
         db.add(llamada)
         db.commit()
@@ -91,7 +89,7 @@ async def aceptar_llamada(cita_id: int, db: Session = Depends(get_db), current_d
     llamada = db.query(Llamada).filter(Llamada.cita_id == cita_id).first()
     if llamada:
         llamada.estado = "activa"
-        llamada.start_time = datetime.utcnow() # Marcar el inicio real al aceptar
+        llamada.start_time = ahora_utc() # Marcar el inicio real al aceptar
         db.commit()
 
     # Notificar al paciente que el doctor aceptó
@@ -128,7 +126,7 @@ async def terminar_llamada(cita_id: int, db: Session = Depends(get_db), current_
     llamada = db.query(Llamada).filter(Llamada.cita_id == cita_id).first()
     if llamada:
         llamada.estado = "terminada"
-        llamada.end_time = datetime.utcnow()
+        llamada.end_time = ahora_utc()
         if llamada.start_time:
             duracion_segundos = int((llamada.end_time - llamada.start_time).total_seconds())
             llamada.duracion = duracion_segundos

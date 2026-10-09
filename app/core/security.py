@@ -1,5 +1,5 @@
 import hmac
-from jose import jwt, JWTError
+import jwt
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -32,7 +32,7 @@ def obtener_usuario_desde_token(token: str, db: Session):
     """
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
-    except JWTError:
+    except jwt.PyJWTError:
         return None
 
     rol = payload.get("rol")

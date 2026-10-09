@@ -1,4 +1,6 @@
-FROM python:3.10-slim
+# El CI usa el espejo de AWS ECR Public para no depender del límite de descargas de Docker Hub
+ARG PYTHON_IMAGE=python:3.12-slim
+FROM ${PYTHON_IMAGE}
 
 # Evitar que Python escriba archivos .pyc y habilitar logs en tiempo real
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -14,8 +16,10 @@ COPY app/requirements.txt /app/
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copiar el código de la API
+# Copiar el código de la API y las migraciones (se aplican solas al arrancar)
 COPY app /app/app
+COPY alembic.ini /app/
+COPY migrations /app/migrations
 
 # No correr como root dentro del contenedor
 RUN useradd --create-home --uid 1000 api && chown -R api /app

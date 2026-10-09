@@ -1,18 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.doctor import Doctor
 from app.schemas.doctor import DoctorCreate
-from app.core.biometria import DIMENSION_EMBEDDING
+from app.schemas.biometria import BiometriaRequest
 from app.core.security import get_current_user, get_current_doctor, prohibido
 from app.routers.auth import hash_password
 import json
 
 router = APIRouter()
-
-class BiometriaRequest(BaseModel):
-    embedding: list[float] = Field(min_length=DIMENSION_EMBEDDING, max_length=DIMENSION_EMBEDDING)
 
 def map_doctor(d: Doctor) -> dict:
     if not d:
