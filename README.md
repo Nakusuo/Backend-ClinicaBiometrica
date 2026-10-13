@@ -2,174 +2,72 @@
   <a href="https://github.com/Nakusuo"><img src="https://raw.githubusercontent.com/Nakusuo/Nakusuo/main/assets/covers/Backend-ClinicaBiometrica.svg" width="100%" alt="Backend-ClinicaBiometrica — Nakusu"/></a>
 </p>
 
-# Backend Clínico - Plataforma de Telemedicina Integrada
+# Telemedicina Integrada · Backend
 
-Backend desarrollado con **FastAPI** y **PostgreSQL** para la gestión de pacientes, doctores, citas y expedientes médicos.
+La API detrás de nuestra clínica de telemedicina: guarda médicos, pacientes, citas y expedientes, **valida el login con la cara** y coordina las **videollamadas y llamadas telefónicas**.
 
-## Tecnologías utilizadas
+La hicimos en equipo para el curso de **Laboratorio de Integración de Sistemas** (UTP). El portal web está en [Frontend-ClinicaBiometrica](https://github.com/Nakusuo/Frontend-ClinicaBiometrica).
 
-* Python 3.12+
-* FastAPI
-* PostgreSQL
-* SQLAlchemy
-* JWT Authentication
-* Swagger UI
+<p align="center">
+  <img src="docs/capturas/01-api-docs.png" width="90%" alt="Documentación interactiva de la API"/>
+</p>
 
----
+## Qué hace
 
-## Estructura del proyecto
+- **Login con contraseña o con la cara.** El frontend manda un vector que describe el rostro (lo genera face-api.js) y aquí se compara con el guardado al registrarse. Si la distancia entre ambos es pequeña, se entrega un token JWT.
+- **Médicos y pacientes**: registro, perfiles y disponibilidad.
+- **Citas y expedientes**: agendar, consultas, recetas y exámenes.
+- **Videollamadas**: el paciente solicita, el médico acepta y al terminar queda registrado.
+- **Integración con telefonía**: se conecta (solo lectura) a la base de **FreePBX/Asterisk** para leer el historial de llamadas, y recibe sus eventos por webhook.
+
+La idea del curso era justamente *integrar sistemas*: el navegador nunca habla directo con las bases de datos ni con la central telefónica, todo pasa por esta API.
+
+## Con qué está hecho
+
+Python 3.12, FastAPI, SQLAlchemy, PostgreSQL (o SQLite para pruebas), JWT, Docker y FreePBX/Asterisk.
 
 ```text
-backend-clinico/
-│
-├── app/
-│   ├── main.py
-│   ├── db/
-│   ├── routers/
-│   ├── models/
-│   ├── schemas/
-│   └── core/
-│
-├── requirements.txt
-├── .env.example
-└── README.md
+app/
+├── routers/   # auth, pacientes, doctores, citas, expedientes, llamadas, webhooks, freepbx
+├── models/    # tablas de SQLAlchemy
+├── schemas/   # validación con Pydantic
+├── core/      # configuración, seguridad (JWT) y comparación biométrica
+└── db/        # conexión, script SQL y datos de prueba
 ```
 
----
-
-## Instalación
-
-### 1. Clonar repositorio
-
-```bash
-git clone https://github.com/Nakusuo/Backend-ClinicaBiometrica
-cd backend-clinico
-```
-
-### 2. Crear entorno virtual
-
-Windows:
+## Cómo correrlo
 
 ```bash
 python -m venv venv
-venv\Scripts\activate
-```
-
-Linux/Mac:
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### 3. Instalar dependencias
-
-```bash
+venv\Scripts\activate          # en Linux/Mac: source venv/bin/activate
 pip install -r requirements.txt
-```
-### 4. Configuración del archivo .env
-
-Crear un archivo `.env` en la raíz del proyecto tomando como referencia `.env.example`.
-
-
-### 5. Configuración de PostgreSQL
-
-  1. Instalar PostgreSQL.
-  2. Crear una base de datos llamada:
-  
-  ```sql
-  CREATE DATABASE telemedicina;
-  ```
-  
-  3. Configurar el usuario y contraseña de PostgreSQL en el archivo .env.
-
----
-
-## Ejecutar el proyecto
-
-Desde la raíz del proyecto ejecutar:
-
-```bash
+cp .env.example .env           # y completa tus valores
 uvicorn app.main:app --reload
 ```
 
-Si todo funciona correctamente aparecerá un mensaje similar a:
+Abre **http://127.0.0.1:8000/docs** para ver y probar todos los endpoints.
 
-```text
-Uvicorn running on http://127.0.0.1:8000
+Si no configuras `DATABASE_URL`, usa un SQLite local. Al arrancar por primera vez carga datos de prueba: el médico `doctor@email.com` y la paciente `maria@email.com`, ambos con contraseña `password123`.
+
+Con Docker (API + PostgreSQL):
+
+```bash
+docker compose up --build
 ```
 
----
+Para montarlo en servidores con FreePBX, mira la guía [DEPLOY_UBUNTU.md](DEPLOY_UBUNTU.md).
 
-## Acceso a Swagger
+<details>
+<summary>Endpoints principales</summary>
 
-Una vez iniciado el servidor, abrir en el navegador:
+| Grupo | Rutas |
+|---|---|
+| Auth | `POST /api/auth/login`, `POST /api/auth/facial-login`, `POST /api/auth/register-doctor`, `POST /api/auth/register-patient` |
+| Pacientes | `/api/pacientes` (CRUD) |
+| Doctores | `/api/doctores` (CRUD) |
+| Citas | `/api/citas` (CRUD) |
+| Expedientes | `/api/expedientes` (CRUD) |
+| Llamadas | `POST /api/llamadas/solicitar`, `POST /api/llamadas/{cita_id}/aceptar`, `POST /api/llamadas/{cita_id}/terminar`, `GET /api/llamadas/` |
+| Telefonía | `GET /api/freepbx/cdr`, `POST /api/webhooks/citas`, `POST /api/webhooks/asterisk-event` |
 
-### Swagger UI
-
-```text
-http://127.0.0.1:8000/docs
-```
-
----
-
-## Endpoints disponibles
-
-### Auth
-
-* POST /api/auth/login
-* POST /api/auth/facial-login
-
-### Pacientes
-
-* GET /api/pacientes
-* GET /api/pacientes/{id}
-* POST /api/pacientes
-* PUT /api/pacientes/{id}
-* DELETE /api/pacientes/{id}
-
-### Doctores
-
-* GET /api/doctores
-* GET /api/doctores/{id}
-* POST /api/doctores
-* PUT /api/doctores/{id}
-* DELETE /api/doctores/{id}
-
-### Citas
-
-* GET /api/citas
-* GET /api/citas/{id}
-* POST /api/citas
-* PUT /api/citas/{id}
-* DELETE /api/citas/{id}
-
-### Expedientes
-
-* GET /api/expedientes
-* GET /api/expedientes/{id}
-* POST /api/expedientes
-* PUT /api/expedientes/{id}
-* DELETE /api/expedientes/{id}
-
-### Webhooks
-
-* POST /api/webhooks/citas
-
----
-
-## Estado actual
-
-✅ Estructura inicial FastAPI configurada
-
-✅ Swagger/OpenAPI habilitado
-
-✅ Routers definidos
-
-🔄 Pendiente: integración PostgreSQL
-
-🔄 Pendiente: modelos SQLAlchemy
-
-🔄 Pendiente: autenticación JWT completa
-
-🔄 Pendiente: CRUD funcional
+</details>
