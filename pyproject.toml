@@ -1,0 +1,11 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 140
+extend-exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+# Errores de sintaxis y de pyflakes (nombres sin definir, imports sin usar, etc.)
+select = ["E9", "F"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
@@ -7,7 +5,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en el archivo .env}
       POSTGRES_DB: ${POSTGRES_DB:-telemedicina}
     ports:
       - "127.0.0.1:5432:5432"
@@ -19,13 +17,13 @@ services:
     container_name: telemedicina_api
     restart: always
     ports:
-      - "8000:8000"
+      # Por defecto solo se escucha en la propia máquina y Nginx publica la API.
+      # Para probar sin Nginx define API_BIND_ADDRESS=0.0.0.0 en .env.
+      - "${API_BIND_ADDRESS:-127.0.0.1}:8000:8000"
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-admin}@db:5432/${POSTGRES_DB:-telemedicina}
-    volumes:
-      - .:/app
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-telemedicina}
     depends_on:
       - db
 

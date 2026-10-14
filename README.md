@@ -32,7 +32,9 @@ app/
 ├── models/    # tablas de SQLAlchemy
 ├── schemas/   # validación con Pydantic
 ├── core/      # configuración, seguridad (JWT) y comparación biométrica
-└── db/        # conexión, script SQL y datos de prueba
+└── db/        # conexión, migraciones y datos de prueba
+migrations/    # esquema de la base (Alembic)
+tests/         # pruebas con pytest
 ```
 
 ## Cómo correrlo
@@ -40,14 +42,14 @@ app/
 ```bash
 python -m venv venv
 venv\Scripts\activate          # en Linux/Mac: source venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env           # y completa tus valores
+pip install -r app/requirements.txt
+cp .env.example .env           # y completa tus valores (SECRET_KEY es obligatoria)
 uvicorn app.main:app --reload
 ```
 
 Abre **http://127.0.0.1:8000/docs** para ver y probar todos los endpoints.
 
-Si no configuras `DATABASE_URL`, usa un SQLite local. Al arrancar por primera vez carga datos de prueba: el médico `doctor@email.com` y la paciente `maria@email.com`, ambos con contraseña `password123`.
+Si no configuras `DATABASE_URL`, usa un SQLite local. Al arrancar aplica sola las migraciones pendientes (`AUTO_MIGRATE=true`). Con `SEED_DEMO_DATA=true` carga datos de prueba: el médico `doctor@email.com` y la paciente `maria@email.com`, ambos con contraseña `password123`. En producción la API no arranca con datos de prueba ni con una `SECRET_KEY` insegura.
 
 Con Docker (API + PostgreSQL):
 
@@ -56,6 +58,25 @@ docker compose up --build
 ```
 
 Para montarlo en servidores con FreePBX, mira la guía [DEPLOY_UBUNTU.md](DEPLOY_UBUNTU.md).
+
+## Migraciones
+
+El esquema vive en `migrations/` (Alembic). Si cambias un modelo, genera la migración y revísala antes de subirla:
+
+```bash
+alembic revision --autogenerate -m "describe el cambio"
+alembic upgrade head
+```
+
+## Pruebas
+
+```bash
+pip install -r requirements-dev.txt
+ruff check .
+pytest
+```
+
+Comprueban que cada usuario solo accede a lo suyo (pacientes, citas, expedientes, llamadas, WebSocket), que el login facial no se puede burlar, que la API no inventa datos clínicos y que las migraciones coinciden con los modelos. GitHub Actions corre lo mismo en cada PR.
 
 <details>
 <summary>Endpoints principales</summary>

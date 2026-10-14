@@ -6,7 +6,7 @@ from app.models.expediente import Expediente
 from app.models.consulta import Consulta
 from app.models.receta import Receta
 import bcrypt
-import json
+import logging
 
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
@@ -14,6 +14,7 @@ def hash_password(password: str) -> str:
     return hashed.decode('utf-8')
 
 def seed_db(db: Session):
+    # Solo corre con SEED_DEMO_DATA=true (ver app/main.py). Nunca en producción.
     # Verificar si ya existen doctores
     if db.query(Doctor).count() > 0:
         return
@@ -27,8 +28,9 @@ def seed_db(db: Session):
         cedula="CMP12345",
         telefono="+51 999 111 222",
         password_hash=hash_password("password123"),
-        # Embedding de 128 floats (relleno con 0.1 como en el bypass del front)
-        embedding_facial=json.dumps([0.1] * 128),
+        # Sin rostro precargado: un vector conocido dejaría entrar a cualquiera.
+        # Registra tu rostro desde la app después de ingresar con la contraseña.
+        embedding_facial=None,
         rol="doctor",
         activo=True
     )
@@ -46,7 +48,7 @@ def seed_db(db: Session):
         direccion="Av. Larco 456, Miraflores",
         genero="Femenino",
         password_hash=hash_password("password123"),
-        embedding_facial=json.dumps([0.1] * 128)
+        embedding_facial=None
     )
     db.add(paciente)
     db.flush()
@@ -118,4 +120,4 @@ def seed_db(db: Session):
     db.add(receta)
 
     db.commit()
-    print("Database successfully seeded with new schema!")
+    logging.getLogger(__name__).info("Datos de prueba cargados")
