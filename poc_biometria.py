@@ -1,5 +1,4 @@
 from deepface import DeepFace
-import cv2
 import os
 
 print("=== S1: PRUEBA DE CONCEPTO BIOMÉTRICA CON DEEPFACE ===")
@@ -15,7 +14,7 @@ else:
         resp = DeepFace.represent(img_path=ruta_imagen, model_name="Facenet", enforce_detection=False)
         if resp:
             embedding = resp[0]["embedding"]
-            print(f"-> Embedding generado con éxito usando DeepFace (FaceNet)!")
+            print("-> Embedding generado con éxito usando DeepFace (FaceNet)!")
             print(f"-> Dimensiones del vector: {len(embedding)}")
         else:
             print("No se pudieron extraer características faciales.")

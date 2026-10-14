@@ -1,5 +1,8 @@
+import logging
 from typing import Dict
 from fastapi import WebSocket
+
+logger = logging.getLogger(__name__)
 
 
 # Orquestador/Manager de conexiones WebSocket para señalización WebRTC.
@@ -13,7 +16,7 @@ class ConnectionManager:
         """Guarda un socket ya aceptado y autenticado."""
         key = f"{role}:{user_id}"
         self.active_connections[key] = websocket
-        print(f"WS Conectado: {key}. Conexiones activas: {len(self.active_connections)}")
+        logger.info("WS conectado: %s. Conexiones activas: %d", key, len(self.active_connections))
 
     def disconnect(self, role: str, user_id: str, websocket: WebSocket | None = None):
         key = f"{role}:{user_id}"
@@ -22,7 +25,7 @@ class ConnectionManager:
             return
         if key in self.active_connections:
             del self.active_connections[key]
-            print(f"WS Desconectado: {key}. Conexiones activas: {len(self.active_connections)}")
+            logger.info("WS desconectado: %s. Conexiones activas: %d", key, len(self.active_connections))
 
     async def send_personal_message(self, message: dict, role: str, user_id: str):
         key = f"{role}:{user_id}"
@@ -31,7 +34,7 @@ class ConnectionManager:
             try:
                 await websocket.send_json(message)
             except Exception as e:
-                print(f"Error al enviar mensaje a {key}: {e}")
+                logger.warning("Error al enviar mensaje a %s: %s", key, e)
                 self.disconnect(role, user_id)
 
 

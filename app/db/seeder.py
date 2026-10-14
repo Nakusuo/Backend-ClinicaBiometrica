@@ -6,6 +6,7 @@ from app.models.expediente import Expediente
 from app.models.consulta import Consulta
 from app.models.receta import Receta
 import bcrypt
+import logging
 
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
@@ -119,4 +120,4 @@ def seed_db(db: Session):
     db.add(receta)
 
     db.commit()
-    print("Database successfully seeded with new schema!")
+    logging.getLogger(__name__).info("Datos de prueba cargados")
