@@ -57,6 +57,14 @@ Con Docker (API + PostgreSQL):
 docker compose up --build
 ```
 
+Para videollamadas entre redes distintas (datos móviles, redes corporativas) levanta también el TURN y completa `TURN_URLS` y `TURN_SECRET` en `.env`:
+
+```bash
+docker compose --profile turn up -d
+```
+
+La API entrega a cada usuario una credencial TURN que vence (`GET /api/llamadas/{cita_id}/ice-servers`, solo participantes de la cita); el secreto nunca llega al navegador.
+
 Para montarlo en servidores con FreePBX, mira la guía [DEPLOY_UBUNTU.md](DEPLOY_UBUNTU.md).
 
 ## Migraciones

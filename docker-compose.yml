@@ -27,5 +27,37 @@ services:
     depends_on:
       - db
 
+  # TURN propio para videollamadas detrás de NAT estricto (riesgo R-03).
+  # Se levanta con: docker compose --profile turn up -d
+  turn:
+    image: coturn/coturn:4.6.3
+    profiles: ["turn"]
+    restart: always
+    # TURN necesita un rango amplio de puertos UDP: la red del host es lo más simple
+    network_mode: host
+    command:
+      - -n
+      - --listening-port=3478
+      - --realm=${TURN_REALM:-clinica}
+      - --use-auth-secret
+      - --static-auth-secret=${TURN_SECRET:?Define TURN_SECRET en .env}
+      - --min-port=49160
+      - --max-port=49200
+      - --no-cli
+      - --no-tls
+      - --fingerprint
+      # El relé solo debe llegar a navegadores en internet, nunca a la red interna (SSRF)
+      - --no-multicast-peers
+      - --denied-peer-ip=0.0.0.0-0.255.255.255
+      - --denied-peer-ip=10.0.0.0-10.255.255.255
+      - --denied-peer-ip=100.64.0.0-100.127.255.255
+      - --denied-peer-ip=127.0.0.0-127.255.255.255
+      - --denied-peer-ip=169.254.0.0-169.254.255.255
+      - --denied-peer-ip=172.16.0.0-172.31.255.255
+      - --denied-peer-ip=192.168.0.0-192.168.255.255
+      - --denied-peer-ip=::1
+      - --denied-peer-ip=fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+      - --denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+
 volumes:
   postgres_data:
