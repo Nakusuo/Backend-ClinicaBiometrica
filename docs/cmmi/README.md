@@ -13,6 +13,6 @@ Repositorios: [Backend](https://github.com/Nakusuo/Backend-ClinicaBiometrica) ·
 | Gestión de riesgos | RSKM | [riesgos.md](riesgos.md) | Listo |
 | Análisis y resolución de decisiones | DAR | [`docs/adr/`](../adr/README.md) | Listo |
 | Solución técnica / Integración | TS / PI | [arquitectura.md](arquitectura.md) | Listo |
-| Verificación / Validación | VER / VAL | verificacion-validacion.md | Fase 4 |
-| Medición y análisis | MA | metricas.md | Fase 5 |
-| Definición y enfoque del proceso | OPD / OPF | este archivo + lecciones-aprendidas.md | Fase 5 |
+| Verificación / Validación | VER / VAL | [verificacion-validacion.md](verificacion-validacion.md) | Listo |
+| Medición y análisis | MA | [metricas.md](metricas.md) | Línea base |
+| Definición y enfoque del proceso | OPD / OPF | este archivo + [lecciones-aprendidas.md](lecciones-aprendidas.md) | En curso |
