@@ -5,6 +5,7 @@ from app.models.cita import Cita
 from app.models.expediente import Expediente
 from app.models.consulta import Consulta
 from app.models.receta import Receta
+from datetime import date, timedelta
 import bcrypt
 import logging
 
@@ -53,11 +54,12 @@ def seed_db(db: Session):
     db.add(paciente)
     db.flush()
 
-    # 3. Crear Citas de prueba
+    # 3. Crear Citas de prueba: hoy y mañana, para que siempre se vean en los paneles
+    hoy = date.today()
     cita1 = Cita(
         paciente_id=paciente.id,
         doctor_id=doctor.id,
-        fecha="2026-06-23",
+        fecha=hoy.isoformat(),
         hora="10:00 AM",
         estado="programada",
         motivo="Revisión General Anual"
@@ -65,9 +67,9 @@ def seed_db(db: Session):
     cita2 = Cita(
         paciente_id=paciente.id,
         doctor_id=doctor.id,
-        fecha="2026-06-23",
+        fecha=(hoy + timedelta(days=1)).isoformat(),
         hora="11:15 AM",
-        estado="en_curso",
+        estado="programada",
         motivo="Consulta de Seguimiento Post-Operativo"
     )
     db.add(cita1)

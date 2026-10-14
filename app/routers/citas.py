@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
@@ -77,6 +79,23 @@ def obtener_cita(cita_id: int, db: Session = Depends(get_db), current_user = Dep
     exigir_participante_de_cita(current_user, cita)
     return map_cita(cita)
 
+def validar_horario(db: Session, doctor_id: int, fecha: str | None, hora: str | None, excluir_id: int | None = None):
+    """Una cita no puede quedar en el pasado ni cruzarse con otra del mismo médico."""
+    if fecha and fecha < date.today().isoformat():
+        raise HTTPException(status_code=422, detail="La fecha de la cita no puede ser anterior a hoy")
+    if not (fecha and hora):
+        return
+    cruce = db.query(Cita).filter(
+        Cita.doctor_id == doctor_id,
+        Cita.fecha == fecha,
+        Cita.hora == hora,
+        Cita.estado != "cancelada",
+    )
+    if excluir_id is not None:
+        cruce = cruce.filter(Cita.id != excluir_id)
+    if cruce.first():
+        raise HTTPException(status_code=409, detail="El médico ya tiene una cita en ese horario")
+
 @router.post("/")
 def crear_cita(payload: CitaCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     # Un paciente solo agenda citas para sí mismo; un médico solo en su propia agenda
@@ -84,6 +103,7 @@ def crear_cita(payload: CitaCreate, db: Session = Depends(get_db), current_user 
         raise prohibido("Solo puedes agendar citas a tu nombre")
     if es_doctor(current_user) and payload.doctor_id != current_user.id:
         raise prohibido("Solo puedes agendar citas en tu propia agenda")
+    validar_horario(db, payload.doctor_id, payload.fecha, payload.hora)
     cita = Cita(
         paciente_id=payload.paciente_id,
         doctor_id=payload.doctor_id,
@@ -104,9 +124,16 @@ def actualizar_cita(cita_id: int, payload: CitaCreate, db: Session = Depends(get
         raise HTTPException(status_code=404, detail="Cita no encontrada")
     exigir_participante_de_cita(current_user, cita)
     # El médico y el paciente de una cita no se cambian por esta vía
+    if (payload.fecha, payload.hora) != (cita.fecha, cita.hora):
+        validar_horario(db, cita.doctor_id, payload.fecha, payload.hora, excluir_id=cita.id)
     cita.fecha = payload.fecha
     cita.hora = payload.hora
-    cita.estado = payload.estado
+    if es_paciente(current_user):
+        # El paciente reprograma, pero el estado lo cambia solo por PATCH /estado (cancelar)
+        if "estado" in payload.model_fields_set and payload.estado != cita.estado:
+            raise prohibido("Para cambiar el estado de tu cita usa la opción de cancelar")
+    else:
+        cita.estado = payload.estado
     cita.motivo = payload.motivo
 
     db.commit()
@@ -119,6 +146,9 @@ def actualizar_cita_estado(cita_id: int, payload: CitaUpdateEstado, db: Session 
     if not cita:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
     exigir_participante_de_cita(current_user, cita)
+    # El paciente solo puede cancelar; el resto de estados los maneja el médico
+    if es_paciente(current_user) and payload.estado != "cancelada":
+        raise prohibido("Solo puedes cancelar tu cita")
 
     cita.estado = payload.estado
     db.commit()
