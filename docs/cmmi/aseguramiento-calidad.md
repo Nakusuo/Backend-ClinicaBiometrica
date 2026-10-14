@@ -33,3 +33,9 @@ Al cerrar cada milestone se revisa una muestra de PRs y se anota el resultado en
 | ¿Los issues tienen requisito y criterios de aceptación? | Cuerpo del issue |
 
 Las **no conformidades** se registran como issue con etiquetas `ppqa` y `bug` y se siguen hasta cerrarlas.
+
+## Registro de auditorías
+
+| Fecha | Informe | No conformidades |
+|---|---|---|
+| 2026-10-14 | [ppqa-2026-10-14.md](auditorias/ppqa-2026-10-14.md) | 4 (B#29) |
