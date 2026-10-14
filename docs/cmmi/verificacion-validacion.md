@@ -17,7 +17,7 @@ Cada prueba está ligada a su requisito en [trazabilidad.md](trazabilidad.md). U
 
 ## Validación: pruebas de aceptación
 
-Se ejecutan sobre `develop` antes de cada release, con dos navegadores (médico y paciente) y los datos de prueba (`SEED_DEMO_DATA=true`). El resultado se anota en el PR de la release: ✅ pasa · ❌ falla (con issue).
+Los escenarios que no necesitan cámara ni celular están automatizados en [`scripts/aceptacion_api.py`](../../scripts/aceptacion_api.py) (`python scripts/aceptacion_api.py http://localhost:8000`). El resto se ejecuta a mano. Se ejecutan sobre `develop` antes de cada release, con dos navegadores (médico y paciente) y los datos de prueba (`SEED_DEMO_DATA=true`). El resultado se anota en el PR de la release: ✅ pasa · ❌ falla (con issue).
 
 | ID | Requisitos | Escenario | Resultado esperado |
 |---|---|---|---|
@@ -37,4 +37,5 @@ Se ejecutan sobre `develop` antes de cada release, con dos navegadores (médico 
 
 | Fecha | Versión | Ejecutó | Resultado | Issues abiertos |
 |---|---|---|---|---|
-| | | | | |
+| 2026-10-14 | release/1.0.0 | Script por API | PA-01, 02, 04, 05, 06, 07, 09 y 10: ✅ (8/8) | — |
+| | | | PA-03 (rostro), PA-08 (videollamada), PA-11 (móvil): pendientes, a mano | B#15 |
