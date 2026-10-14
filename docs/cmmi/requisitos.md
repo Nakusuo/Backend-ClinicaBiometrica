@@ -30,8 +30,8 @@ Cada requisito se rastrea hasta el código, las pruebas y los issues en [trazabi
 | RF-08 | No se agendan citas en el pasado ni en un horario que el médico ya tiene ocupado. | A | Hecho |
 | RF-09 | El médico ve sus citas de hoy y, a pedido, todas sus citas. | A | Hecho |
 | RF-10 | El paciente ve su próxima cita y su historial de citas. | A | Hecho |
-| RF-11 | El médico cambia el estado de una cita (programada, en curso, finalizada, cancelada). | M | Parcial |
-| RF-12 | El paciente cancela o reprograma su cita. | M | Pendiente |
+| RF-11 | El médico cambia el estado de una cita (programada, en curso, finalizada, cancelada). | M | Hecho |
+| RF-12 | El paciente cancela o reprograma su cita. | M | Hecho |
 
 ### Expediente clínico
 
