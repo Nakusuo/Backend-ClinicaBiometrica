@@ -14,8 +14,22 @@ from app.core.security import (
     exigir_participante_de_cita,
 )
 from app.core.ws_manager import manager
+from app.core.turn import ice_servers
 
 router = APIRouter()
+
+@router.get("/{cita_id}/ice-servers")
+def obtener_ice_servers(cita_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    # Solo los participantes de una cita activa reciben acceso al relé TURN;
+    # el secreto no sale del servidor y la credencial vence
+    cita = db.query(Cita).filter(Cita.id == cita_id).first()
+    if not cita:
+        raise HTTPException(status_code=404, detail="Cita no encontrada")
+    exigir_participante_de_cita(current_user, cita)
+    if cita.estado in ("cancelada", "finalizada"):
+        raise prohibido("La cita ya no admite videollamada")
+    rol = "doctor" if es_doctor(current_user) else "paciente"
+    return {"iceServers": ice_servers(f"{rol}-{current_user.id}")}
 
 class SolicitarLlamadaRequest(BaseModel):
     paciente_id: int
