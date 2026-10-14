@@ -27,5 +27,25 @@ services:
     depends_on:
       - db
 
+  # TURN propio para videollamadas detrás de NAT estricto (riesgo R-03).
+  # Se levanta con: docker compose --profile turn up -d
+  turn:
+    image: coturn/coturn:4.6.3
+    profiles: ["turn"]
+    restart: always
+    # TURN necesita un rango amplio de puertos UDP: la red del host es lo más simple
+    network_mode: host
+    command:
+      - -n
+      - --listening-port=3478
+      - --realm=${TURN_REALM:-clinica}
+      - --use-auth-secret
+      - --static-auth-secret=${TURN_SECRET:?Define TURN_SECRET en .env}
+      - --min-port=49160
+      - --max-port=49200
+      - --no-cli
+      - --no-tls
+      - --fingerprint
+
 volumes:
   postgres_data:
