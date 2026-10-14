@@ -1,34 +1,37 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from app.db.database import SessionLocal
+from app.db.database import get_db
 from app.models.cita import Cita
-from app.models.paciente import Paciente
-from app.models.doctor import Doctor
 from app.models.llamada import Llamada
-from datetime import datetime
-from app.core.security import get_current_user
+from app.core.tiempo import ahora_utc
+from app.core.security import (
+    get_current_user,
+    get_current_doctor,
+    get_current_patient,
+    es_doctor,
+    prohibido,
+    exigir_participante_de_cita,
+)
+from app.core.ws_manager import manager
 
 router = APIRouter()
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 class SolicitarLlamadaRequest(BaseModel):
     paciente_id: int
     cita_id: int
 
 @router.post("/solicitar")
-async def solicitar_llamada(payload: SolicitarLlamadaRequest, db: Session = Depends(get_db)):
-    cita = db.query(Cita).filter(Cita.id == payload.cita_id).first()
-    paciente = db.query(Paciente).filter(Paciente.id == payload.paciente_id).first()
+async def solicitar_llamada(payload: SolicitarLlamadaRequest, db: Session = Depends(get_db), current_patient = Depends(get_current_patient)):
+    if payload.paciente_id != current_patient.id:
+        raise prohibido("Solo puedes solicitar llamadas a tu nombre")
 
-    if not cita or not paciente:
-        raise HTTPException(status_code=404, detail="Cita o Paciente no encontrado")
+    cita = db.query(Cita).filter(Cita.id == payload.cita_id).first()
+    paciente = current_patient
+
+    if not cita:
+        raise HTTPException(status_code=404, detail="Cita no encontrada")
+    exigir_participante_de_cita(current_patient, cita)
 
     cita.estado = "en_curso"
     db.commit()
@@ -42,13 +45,12 @@ async def solicitar_llamada(payload: SolicitarLlamadaRequest, db: Session = Depe
             doctor_id=cita.doctor_id,
             room_id=f"room_{payload.cita_id}",
             estado="esperando",
-            start_time=datetime.utcnow()
+            start_time=ahora_utc()
         )
         db.add(llamada)
         db.commit()
 
     # Notificar al doctor en tiempo real vía WebSocket
-    from app.main import manager
     doctor_id_str = str(cita.doctor_id)
     await manager.send_personal_message(
         role="doctor",
@@ -74,10 +76,11 @@ async def solicitar_llamada(payload: SolicitarLlamadaRequest, db: Session = Depe
     }
 
 @router.post("/{cita_id}/aceptar")
-async def aceptar_llamada(cita_id: int, db: Session = Depends(get_db)):
+async def aceptar_llamada(cita_id: int, db: Session = Depends(get_db), current_doctor = Depends(get_current_doctor)):
     cita = db.query(Cita).filter(Cita.id == cita_id).first()
     if not cita:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
+    exigir_participante_de_cita(current_doctor, cita)
 
     cita.estado = "en_curso"
     db.commit()
@@ -86,11 +89,10 @@ async def aceptar_llamada(cita_id: int, db: Session = Depends(get_db)):
     llamada = db.query(Llamada).filter(Llamada.cita_id == cita_id).first()
     if llamada:
         llamada.estado = "activa"
-        llamada.start_time = datetime.utcnow() # Marcar el inicio real al aceptar
+        llamada.start_time = ahora_utc() # Marcar el inicio real al aceptar
         db.commit()
 
     # Notificar al paciente que el doctor aceptó
-    from app.main import manager
     await manager.send_personal_message(
         role="paciente",
         user_id=str(cita.paciente_id),
@@ -111,10 +113,11 @@ async def aceptar_llamada(cita_id: int, db: Session = Depends(get_db)):
     }
 
 @router.post("/{cita_id}/terminar")
-async def terminar_llamada(cita_id: int, db: Session = Depends(get_db)):
+async def terminar_llamada(cita_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     cita = db.query(Cita).filter(Cita.id == cita_id).first()
     if not cita:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
+    exigir_participante_de_cita(current_user, cita)
 
     cita.estado = "finalizada"
     db.commit()
@@ -123,14 +126,13 @@ async def terminar_llamada(cita_id: int, db: Session = Depends(get_db)):
     llamada = db.query(Llamada).filter(Llamada.cita_id == cita_id).first()
     if llamada:
         llamada.estado = "terminada"
-        llamada.end_time = datetime.utcnow()
+        llamada.end_time = ahora_utc()
         if llamada.start_time:
             duracion_segundos = int((llamada.end_time - llamada.start_time).total_seconds())
             llamada.duracion = duracion_segundos
         db.commit()
 
     # Notificar desconexión
-    from app.main import manager
     await manager.send_personal_message(
         role="paciente",
         user_id=str(cita.paciente_id),
@@ -143,7 +145,7 @@ async def terminar_llamada(cita_id: int, db: Session = Depends(get_db)):
             }
         }
     )
-    
+
     await manager.send_personal_message(
         role="doctor",
         user_id=str(cita.doctor_id),
@@ -168,7 +170,12 @@ def listar_llamadas(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    llamadas = db.query(Llamada).order_by(Llamada.id.desc()).all()
+    query = db.query(Llamada)
+    if es_doctor(current_user):
+        query = query.filter(Llamada.doctor_id == current_user.id)
+    else:
+        query = query.filter(Llamada.paciente_id == current_user.id)
+    llamadas = query.order_by(Llamada.id.desc()).all()
     results = []
     for l in llamadas:
         fecha_str = ""
@@ -179,11 +186,11 @@ def listar_llamadas(
         elif l.created_at:
             fecha_str = l.created_at.strftime("%Y-%m-%d")
             hora_str = l.created_at.strftime("%H:%M:%S")
-            
+
         paciente_info = None
         if l.paciente:
             paciente_info = f"{l.paciente.nombres} {l.paciente.apellidos}"
-            
+
         results.append({
             "id": l.id,
             "fecha": fecha_str,
