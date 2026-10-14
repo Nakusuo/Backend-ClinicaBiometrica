@@ -66,6 +66,6 @@ Cada requisito se rastrea hasta el código, las pruebas y los issues en [trazabi
 | RNF-04 | **Mantenibilidad:** el esquema de la base se versiona con migraciones; las dependencias tienen versiones fijas. | A | Hecho |
 | RNF-05 | **Calidad:** cada cambio pasa tests, lint y build en CI antes de unirse. | A | Hecho |
 | RNF-06 | **Portabilidad:** la API corre con Docker (PostgreSQL) y en local con SQLite. | M | Hecho |
-| RNF-07 | **Rendimiento:** el login facial responde en menos de 3 s en una red normal. | M | Pendiente de medir |
-| RNF-08 | **Usabilidad:** las pantallas funcionan en móvil (ancho 360 px). | M | Pendiente de validar |
+| RNF-07 | **Rendimiento:** el login facial responde en menos de 3 s en una red normal. | M | Parcial: API medida (p95 5 ms); falta la detección en el navegador |
+| RNF-08 | **Usabilidad:** las pantallas funcionan en móvil (ancho 360 px). | M | Hecho |
 | RNF-09 | **Configuración segura:** en producción la API no arranca con datos de prueba ni con una clave débil. | A | Hecho |

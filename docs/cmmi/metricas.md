@@ -25,6 +25,19 @@ Cada métrica responde a un objetivo. Se recoge al cerrar cada milestone (los da
 | Requisitos *Hecho* con prueba | 22 / 25 (88 %) | Faltan RF-18, RF-19 y RNF-09; RF-18 y RNF-09 ya tienen prueba en B#18 |
 | PRs abiertos en espera de revisión | 17 | Cuello de botella: la revisión. Ver lecciones aprendidas |
 
+### Release v1.0.0 — 14 oct 2026
+
+| Métrica | Valor | Meta | Comentario |
+|---|---|---|---|
+| Cobertura backend | 79 % | ≥ 70 % | Subió 5 puntos con las pruebas de la fase 4 |
+| Pruebas automáticas | 51 backend + 21 frontend + 8 de aceptación por API | — | |
+| Defectos registrados | 8 | — | Se suma F#16 (desborde en móvil), hallado al validar RNF-08 |
+| Defectos hallados antes de `main` | 8 / 8 (100 %) | ≥ 80 % | |
+| Defectos abiertos al publicar | 0 | 0 críticos o altos | |
+| Requisitos *Hecho* con prueba | 25 / 26 (96 %) | 100 % | Falta RF-19 (necesita FreePBX) |
+| Login facial (API) | p95 5 ms | < 3 s | Falta medir la detección en el navegador |
+| PRs con CI verde e issue enlazado | 100 % | 100 % | Desde la fase 1; `main` y `develop` protegidas |
+
 ## Análisis
 
 - El proceso detectó **todos** los defectos antes de publicar. Tres de ellos (B#18, B#19 y el estado libre) salieron al **escribir las pruebas** de la fase 4, lo que muestra el valor de exigir una prueba por requisito.

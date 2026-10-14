@@ -38,4 +38,6 @@ Los escenarios que no necesitan cámara ni celular están automatizados en [`scr
 | Fecha | Versión | Ejecutó | Resultado | Issues abiertos |
 |---|---|---|---|---|
 | 2026-10-14 | release/1.0.0 | Script por API | PA-01, 02, 04, 05, 06, 07, 09 y 10: ✅ (8/8) | — |
-| | | | PA-03 (rostro), PA-08 (videollamada), PA-11 (móvil): pendientes, a mano | B#15 |
+| 2026-10-14 | v1.0.0 | Iframe de 360 px en cada pantalla | PA-11: ❌ el panel del médico desbordaba 12 px → corregido en F#16; repetido: ✅ en las 8 pantallas | F#16 |
+| 2026-10-14 | v1.0.0 | 20 logins faciales por API | PA-03 (parte servidor): ✅ mediana 4 ms, p95 5 ms | B#15 |
+| | | | PA-03 con cámara real y PA-08 (videollamada): pendientes, a mano | B#15 |
