@@ -128,7 +128,12 @@ def actualizar_cita(cita_id: int, payload: CitaCreate, db: Session = Depends(get
         validar_horario(db, cita.doctor_id, payload.fecha, payload.hora, excluir_id=cita.id)
     cita.fecha = payload.fecha
     cita.hora = payload.hora
-    cita.estado = payload.estado
+    if es_paciente(current_user):
+        # El paciente reprograma, pero el estado lo cambia solo por PATCH /estado (cancelar)
+        if "estado" in payload.model_fields_set and payload.estado != cita.estado:
+            raise prohibido("Para cambiar el estado de tu cita usa la opción de cancelar")
+    else:
+        cita.estado = payload.estado
     cita.motivo = payload.motivo
 
     db.commit()
