@@ -1,14 +1,17 @@
-from pydantic import BaseModel, EmailStr
-from typing import List, Optional
+from pydantic import BaseModel, EmailStr, Field
+from typing import Literal, Optional
+
+from app.schemas.tipos import Embedding, FechaNacimiento
 
 class FacialLoginRequest(BaseModel):
     correo: EmailStr
-    embedding_facial: List[float]
+    embedding_facial: Embedding
+    role: Optional[Literal["doctor", "paciente"]] = None
 
 class LoginRequest(BaseModel):
     correo: EmailStr
     password: str
-    role: Optional[str] = None
+    role: Optional[Literal["doctor", "paciente"]] = None
 
 class DoctorRegisterRequest(BaseModel):
     nombre: str
@@ -16,8 +19,8 @@ class DoctorRegisterRequest(BaseModel):
     especialidad: str
     cedula: str
     telefono: str
-    password: str
-    faceEmbedding: List[float]
+    password: str = Field(min_length=8)
+    faceEmbedding: Embedding
 
 class PatientRegisterRequest(BaseModel):
     nombre: str
@@ -25,6 +28,6 @@ class PatientRegisterRequest(BaseModel):
     dni: str
     email: EmailStr
     telefono: str
-    fechaNacimiento: str
-    password: str
-    faceEmbedding: Optional[List[float]] = None
+    fechaNacimiento: FechaNacimiento
+    password: str = Field(min_length=8)
+    faceEmbedding: Optional[Embedding] = None
