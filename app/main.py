@@ -1,9 +1,12 @@
 import asyncio
+import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, status
 
-from app.db.database import Base, engine, SessionLocal
+from app.db.database import SessionLocal
 from app.db.seeder import seed_db
+from app.db.migrar import migrar
 from app.core.config import settings
 from app.core.security import obtener_usuario_desde_token, rol_de
 from app.core.ws_manager import manager
@@ -19,20 +22,31 @@ from app.routers import (
     freepbx
 )
 
-# Importamos todos los modelos para que Base.metadata los reconozca al crear las tablas
-from app.models.doctor import Doctor
-from app.models.paciente import Paciente
-from app.models.cita import Cita
-from app.models.expediente import Expediente
-from app.models.consulta import Consulta
-from app.models.receta import Receta
-from app.models.examen import Examen
-from app.models.llamada import Llamada
+# Registra todos los modelos en Base.metadata
+import app.models  # noqa: F401
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logger = logging.getLogger("telemedicina")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    if settings.auto_migrate:
+        migrar()
+    if settings.seed_demo_data:
+        db = SessionLocal()
+        try:
+            seed_db(db)
+        finally:
+            db.close()
+    yield
+
 
 app = FastAPI(
     title="API Clínica Telemedicina",
     version="1.0.0",
-    description="Backend clínico para la plataforma de telemedicina"
+    description="Backend clínico para la plataforma de telemedicina",
+    lifespan=lifespan,
 )
 
 # Configuración de CORS. La sesión viaja en el header Authorization, no en cookies,
@@ -44,18 +58,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Evento de inicio del servidor para crear tablas y poblar datos iniciales
-@app.on_event("startup")
-def startup():
-    Base.metadata.create_all(bind=engine)
-    if not settings.seed_demo_data:
-        return
-    db = SessionLocal()
-    try:
-        seed_db(db)
-    finally:
-        db.close()
 
 # Segundos que tiene el cliente para enviar {"type": "auth", "token": "<JWT>"} tras conectarse
 WS_AUTH_TIMEOUT = 10
@@ -88,7 +90,7 @@ async def websocket_endpoint(websocket: WebSocket, role: str, user_id: str):
     try:
         while True:
             data = await websocket.receive_json()
-            print(f"WS Recibido de {role}:{user_id} - Tipo: {data.get('type')}")
+            logger.debug("WS recibido de %s:%s - tipo %s", role, user_id, data.get("type"))
 
             target_role = data.get("target_role")
             target_id = data.get("target_id")
@@ -105,7 +107,7 @@ async def websocket_endpoint(websocket: WebSocket, role: str, user_id: str):
     except WebSocketDisconnect:
         manager.disconnect(role, user_id, websocket)
     except Exception as e:
-        print(f"Error en WebSocket para {role}:{user_id}: {e}")
+        logger.warning("Error en WebSocket para %s:%s: %s", role, user_id, e)
         manager.disconnect(role, user_id, websocket)
 
 # Inclusión de Routers

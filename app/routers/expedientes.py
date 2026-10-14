@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.expediente import Expediente
 from app.models.consulta import Consulta
 from app.models.receta import Receta
+from app.models.paciente import Paciente
 from app.schemas.expediente import ExpedienteCreate
 from app.core.security import get_current_doctor, get_current_user, exigir_doctor_o_mismo_paciente
 
@@ -41,6 +42,29 @@ def listar_expedientes(db: Session = Depends(get_db), current_doctor = Depends(g
         receta = db.query(Receta).filter(Receta.consulta_id == consulta.id).first() if consulta else None
         results.append(map_expediente_from_consulta(e, consulta, receta))
     return results
+
+@router.get("/recientes")
+def consultas_recientes(limit: int = Query(default=5, ge=1, le=50), db: Session = Depends(get_db), current_doctor = Depends(get_current_doctor)):
+    """Últimas consultas firmadas por el médico (panel "Historial reciente")."""
+    filas = (
+        db.query(Consulta, Paciente)
+        .join(Expediente, Consulta.expediente_id == Expediente.id)
+        .join(Paciente, Expediente.paciente_id == Paciente.id)
+        .filter(Consulta.doctor_id == current_doctor.id)
+        .order_by(Consulta.fecha_consulta.desc(), Consulta.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "consultaId": c.id,
+            "patientId": p.id,
+            "patientName": f"{p.nombres} {p.apellidos}",
+            "diagnostico": c.diagnostico_principal,
+            "fecha": c.fecha_consulta.strftime("%Y-%m-%d") if c.fecha_consulta else "",
+        }
+        for c, p in filas
+    ]
 
 @router.get("/paciente/{paciente_id}")
 def obtener_expedientes_paciente(paciente_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
@@ -86,11 +110,7 @@ def crear_expediente(payload: ExpedienteCreate, db: Session = Depends(get_db), c
     if not expediente:
         expediente = Expediente(
             paciente_id=p_id,
-            alergias_conocidas="Ninguna",
-            padecimientos_cronicos="Ninguno",
-            grupo_sanguineo="O",
-            factor_rh="+",
-            historial_resumido=payload.historial or "Expediente abierto."
+            historial_resumido=payload.historial
         )
         db.add(expediente)
         db.flush()
@@ -114,13 +134,7 @@ def crear_expediente(payload: ExpedienteCreate, db: Session = Depends(get_db), c
         consulta_id=consulta.id,
         paciente_id=p_id,
         doctor_id=d_id,
-        nombre_medicamento=payload.tratamiento,
-        concentracion="según receta",
-        presentacion="tabletas",
-        dosis="según indicación",
-        frecuencia="cada 8 horas",
-        duracion_tratamiento="7 días",
-        indicaciones_especiales="Tomar con agua."
+        nombre_medicamento=payload.tratamiento
     )
     db.add(receta)
     db.commit()

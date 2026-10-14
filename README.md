@@ -28,9 +28,13 @@ backend-clinico/
 │   ├── routers/
 │   ├── models/
 │   ├── schemas/
-│   └── core/
+│   ├── core/
+│   └── requirements.txt
 │
-├── requirements.txt
+├── migrations/          # Esquema de la base (Alembic)
+├── tests/
+├── alembic.ini
+├── requirements-dev.txt
 ├── .env.example
 └── README.md
 ```
@@ -65,7 +69,7 @@ source venv/bin/activate
 ### 3. Instalar dependencias
 
 ```bash
-pip install -r requirements.txt
+pip install -r app/requirements.txt
 ```
 ### 4. Configuración del archivo .env
 
@@ -76,11 +80,11 @@ Crear un archivo `.env` en la raíz del proyecto tomando como referencia `.env.e
 
   1. Instalar PostgreSQL.
   2. Crear una base de datos llamada:
-  
+
   ```sql
   CREATE DATABASE telemedicina;
   ```
-  
+
   3. Configurar el usuario y contraseña de PostgreSQL en el archivo .env.
 
 ---
@@ -99,17 +103,42 @@ Si todo funciona correctamente aparecerá un mensaje similar a:
 Uvicorn running on http://127.0.0.1:8000
 ```
 
+Al arrancar, la API aplica sola las migraciones pendientes (`AUTO_MIGRATE=true`).
+
 ---
 
-## Pruebas de seguridad
+## Migraciones de base de datos
+
+El esquema vive en `migrations/` (Alembic). Para aplicarlas a mano:
+
+```bash
+python -m app.db.migrar
+```
+
+Si cambias un modelo, genera la migración y revísala antes de subirla:
+
+```bash
+alembic revision --autogenerate -m "describe el cambio"
+alembic upgrade head
+```
+
+Las bases creadas con versiones anteriores (sin Alembic) se reconocen solas: se marcan como
+migración inicial sin tocar los datos.
+
+---
+
+## Pruebas
 
 ```bash
 pip install -r requirements-dev.txt
+ruff check .
 pytest
 ```
 
-Comprueban que cada usuario solo accede a lo suyo (pacientes, citas, expedientes, llamadas, WebSocket)
-y que el login facial no se puede burlar.
+Comprueban que cada usuario solo accede a lo suyo (pacientes, citas, expedientes, llamadas, WebSocket),
+que el login facial no se puede burlar, que la API no inventa datos clínicos y que las migraciones
+coinciden con los modelos. GitHub Actions corre lo mismo en cada PR, más las migraciones en PostgreSQL
+y el build de la imagen Docker.
 
 ## Acceso a Swagger
 
@@ -129,6 +158,8 @@ http://127.0.0.1:8000/docs
 
 * POST /api/auth/login
 * POST /api/auth/facial-login
+* POST /api/auth/register-doctor
+* POST /api/auth/register-patient
 
 ### Pacientes
 
@@ -137,6 +168,7 @@ http://127.0.0.1:8000/docs
 * POST /api/pacientes
 * PUT /api/pacientes/{id}
 * DELETE /api/pacientes/{id}
+* POST /api/pacientes/{id}/biometria (el propio paciente)
 
 ### Doctores
 
@@ -145,6 +177,8 @@ http://127.0.0.1:8000/docs
 * POST /api/doctores
 * PUT /api/doctores/{id}
 * DELETE /api/doctores/{id}
+* POST /api/doctores/{id}/activar (aprobar un médico registrado)
+* POST /api/doctores/{id}/biometria (el propio médico)
 
 ### Citas
 
@@ -157,6 +191,7 @@ http://127.0.0.1:8000/docs
 ### Expedientes
 
 * GET /api/expedientes
+* GET /api/expedientes/recientes (últimas consultas del médico)
 * GET /api/expedientes/{id}
 * POST /api/expedientes
 * PUT /api/expedientes/{id}
@@ -165,6 +200,9 @@ http://127.0.0.1:8000/docs
 ### Webhooks
 
 * POST /api/webhooks/citas
+* POST /api/webhooks/asterisk-event
+
+Los webhooks exigen el header `X-Webhook-Token`.
 
 ---
 

@@ -2,14 +2,17 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
 
+from app.schemas.tipos import FechaNacimiento
+
 class PacienteBase(BaseModel):
     nombre: str
     apellido: str
     dni: str
     telefono: Optional[str] = None
     email: Optional[EmailStr] = None
-    fechaNacimiento: Optional[str] = None
+    fechaNacimiento: Optional[FechaNacimiento] = None
     direccion: Optional[str] = None
+    genero: Optional[str] = None
 
 class PacienteCreate(PacienteBase):
     pass
