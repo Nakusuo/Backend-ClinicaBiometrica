@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Literal, Optional
 from datetime import datetime
 
 from app.schemas.tipos import Fecha
@@ -15,8 +15,10 @@ class CitaBase(BaseModel):
 class CitaCreate(CitaBase):
     pass
 
+EstadoCita = Literal["programada", "en_curso", "finalizada", "cancelada"]
+
 class CitaUpdateEstado(BaseModel):
-    estado: str
+    estado: EstadoCita
 
 class CitaResponse(BaseModel):
     id: int
