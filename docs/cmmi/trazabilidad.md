@@ -32,8 +32,8 @@ Se actualiza en el mismo PR que toca un requisito (lo pide el checklist de la pl
 | RNF-04 | `migrations/`, `app/requirements.txt` | `package-lock.json` | `test_base_nueva_queda_igual_a_los_modelos`, `test_downgrade_completo_funciona` | |
 | RNF-05 | `.github/workflows/ci.yml` | `.github/workflows/ci.yml` | El CI mismo | B#13, F#10 |
 | RNF-06 | `Dockerfile`, `docker-compose.yml`, `core/config.py` | — | Job `docker` del CI | |
-| RNF-07 | — | — | — pendiente de medir | |
-| RNF-08 | — | — | — pendiente de validar | |
+| RNF-07 | `routers/auth.py` (`facial-login`) | `services/biometric.service.ts` | Medición por API (p95 5 ms) | B#15 |
+| RNF-08 | — | Tailwind responsive | PA-11 (iframe 360 px, 8 pantallas) | F#16, F#17 |
 | RNF-09 | `core/config.py`, `db/seeder.py` | `environments/environment.prod.ts` | — falta prueba | B#9, B#10 |
 
 ## Huecos detectados
@@ -42,4 +42,4 @@ Requisitos sin prueba o sin implementar; cada uno se registra como issue de la f
 
 - RF-11, RF-18, RF-19, RNF-09: sin prueba automática.
 - RF-12: no implementado.
-- RNF-07, RNF-08: sin medición ni validación.
+- RNF-07: falta medir la detección facial en el navegador (con cámara).
