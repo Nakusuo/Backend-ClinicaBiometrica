@@ -15,7 +15,7 @@ def test_credencial_turn_es_la_de_coturn():
 
 def test_sin_turn_solo_stun(client, datos, h_paciente_a, monkeypatch):
     monkeypatch.setattr(settings, "turn_urls", [])
-    r = client.get("/api/llamadas/ice-servers", headers=h_paciente_a)
+    r = client.get(f"/api/llamadas/{datos['cita']}/ice-servers", headers=h_paciente_a)
     assert r.status_code == 200
     assert r.json()["iceServers"] == [{"urls": settings.stun_urls}]
 
@@ -23,12 +23,21 @@ def test_sin_turn_solo_stun(client, datos, h_paciente_a, monkeypatch):
 def test_con_turn_entrega_credencial_temporal_sin_el_secreto(client, datos, h_doctor, monkeypatch):
     monkeypatch.setattr(settings, "turn_urls", ["turn:turn.clinica.pe:3478"])
     monkeypatch.setattr(settings, "turn_secret", "secreto-del-servidor")
-    r = client.get("/api/llamadas/ice-servers", headers=h_doctor)
+    r = client.get(f"/api/llamadas/{datos['cita']}/ice-servers", headers=h_doctor)
     turn_srv = r.json()["iceServers"][-1]
     assert turn_srv["urls"] == ["turn:turn.clinica.pe:3478"]
     assert turn_srv["username"].endswith(f":doctor-{datos['doctor']}")
     assert "secreto-del-servidor" not in r.text
 
 
-def test_ice_servers_exige_sesion(client):
-    assert client.get("/api/llamadas/ice-servers").status_code == 401
+def test_ice_servers_exige_sesion(client, datos):
+    assert client.get(f"/api/llamadas/{datos['cita']}/ice-servers").status_code == 401
+
+
+def test_turn_solo_para_participantes_de_la_cita(client, datos, h_paciente_b):
+    assert client.get(f"/api/llamadas/{datos['cita']}/ice-servers", headers=h_paciente_b).status_code == 403
+
+
+def test_turn_no_para_citas_cerradas(client, datos, h_doctor):
+    client.patch(f"/api/citas/{datos['cita']}/estado", headers=h_doctor, json={"estado": "finalizada"})
+    assert client.get(f"/api/llamadas/{datos['cita']}/ice-servers", headers=h_doctor).status_code == 403

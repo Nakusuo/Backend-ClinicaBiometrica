@@ -63,7 +63,7 @@ Para videollamadas entre redes distintas (datos móviles, redes corporativas) le
 docker compose --profile turn up -d
 ```
 
-La API entrega a cada usuario una credencial TURN que vence (`GET /api/llamadas/ice-servers`); el secreto nunca llega al navegador.
+La API entrega a cada usuario una credencial TURN que vence (`GET /api/llamadas/{cita_id}/ice-servers`, solo participantes de la cita); el secreto nunca llega al navegador.
 
 Para montarlo en servidores con FreePBX, mira la guía [DEPLOY_UBUNTU.md](DEPLOY_UBUNTU.md).
 
