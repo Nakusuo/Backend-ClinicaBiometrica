@@ -41,8 +41,9 @@ jobs:
       - name: Lint (ruff)
         run: ruff check .
 
-      - name: Tests
-        run: pytest -q
+      - name: Tests con cobertura
+        run: |
+          pytest -q --cov=app --cov-report=term --cov-report=markdown-append:$GITHUB_STEP_SUMMARY --cov-fail-under=70
 
       - name: Migraciones en PostgreSQL
         env:

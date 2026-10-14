@@ -63,3 +63,7 @@ Thumbs.db
 # test_data/
 # --- Pruebas ---
 .pytest_cache/
+
+# Cobertura
+.coverage
+htmlcov/
