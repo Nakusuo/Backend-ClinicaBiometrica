@@ -14,8 +14,15 @@ from app.core.security import (
     exigir_participante_de_cita,
 )
 from app.core.ws_manager import manager
+from app.core.turn import ice_servers
 
 router = APIRouter()
+
+@router.get("/ice-servers")
+def obtener_ice_servers(current_user = Depends(get_current_user)):
+    # El secreto TURN no sale del servidor: cada usuario recibe una credencial que vence
+    rol = "doctor" if es_doctor(current_user) else "paciente"
+    return {"iceServers": ice_servers(f"{rol}-{current_user.id}")}
 
 class SolicitarLlamadaRequest(BaseModel):
     paciente_id: int

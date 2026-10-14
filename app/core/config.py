@@ -31,6 +31,11 @@ class Settings:
     freepbx_db_user: str | None = os.getenv("FREEPBX_DB_USER")
     freepbx_db_password: str | None = os.getenv("FREEPBX_DB_PASSWORD")
     freepbx_db_name: str = os.getenv("FREEPBX_DB_NAME", "asteriskcdrdb")
+    # Videollamada: STUN público y TURN propio (coturn con use-auth-secret) para NAT estricto
+    stun_urls: list[str] = [u.strip() for u in os.getenv("STUN_URLS", "stun:stun.l.google.com:19302").split(",") if u.strip()]
+    turn_urls: list[str] = [u.strip() for u in os.getenv("TURN_URLS", "").split(",") if u.strip()]
+    turn_secret: str | None = os.getenv("TURN_SECRET") or None
+    turn_ttl_segundos: int = int(os.getenv("TURN_TTL_SEGUNDOS", "3600"))
     # Aplica las migraciones pendientes al arrancar la API (python -m app.db.migrar)
     auto_migrate: bool = _bool("AUTO_MIGRATE", "true")
     # Datos de prueba (médico y paciente demo). Nunca activarlo en producción.
