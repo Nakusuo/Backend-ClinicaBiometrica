@@ -16,15 +16,15 @@ Se actualiza en el mismo PR que toca un requisito (lo pide el checklist de la pl
 | RF-08 | `routers/citas.py` (`validar_horario`) | `appointment-book` (fecha mínima) | `test_no_se_agenda_en_el_pasado`, `test_no_se_cruza_el_horario_del_medico`, `test_cita_cancelada_libera_el_horario` | B#11, B#12 |
 | RF-09 | `routers/citas.py` (`/doctor/{id}`) | `dashboard` (`filtrarCitas`) | `test_medico_no_ve_agenda_de_otro_medico`, `filtrarCitas del panel del doctor` | F#5, F#9 |
 | RF-10 | `routers/citas.py` (`/paciente/{id}`) | `patient-dashboard` | `test_listar_citas_devuelve_solo_las_propias`, `test_cita_muestra_edad_real_o_nada` | |
-| RF-11 | `routers/citas.py` (`PATCH /estado`) | `expedient-editor` | — falta prueba | |
-| RF-12 | — | — | — | pendiente de issue |
+| RF-11 | `routers/citas.py` (`PATCH /estado`) | `expedient-editor` | `test_medico_cambia_el_estado_y_el_paciente_solo_cancela` | B#14, B#18 |
+| RF-12 | `routers/citas.py` (`PUT`, `PATCH /estado`) | `patient-dashboard`, `appointment-book` | `test_paciente_reprograma_pero_no_cambia_el_estado`, `AppointmentBookComponent al reprogramar` | F#11, F#12, B#19, B#20 |
 | RF-13 | `routers/expedientes.py` | `expedient-editor` | `test_expediente_lo_firma_el_medico_del_token`, `test_expediente_nuevo_no_inventa_alergias_ni_posologia` | |
 | RF-14 | `routers/expedientes.py`, `routers/pacientes.py` | `expedient` | `test_paciente_ve_lo_suyo`, `test_paciente_no_ve_datos_de_otro_paciente`, `test_paciente_incluye_resumen_clinico_real` | |
 | RF-15 | `routers/expedientes.py` (`/recientes`) | `dashboard` | `test_consultas_recientes_solo_del_medico` | |
 | RF-16 | `routers/llamadas.py` | `patient-dashboard`, `dashboard` | `test_llamadas_solo_entre_participantes` | |
 | RF-17 | `main.py` (WebSocket) | `services/webrtc.service.ts`, `videocall` | `test_websocket_sin_token_se_cierra`, `test_websocket_no_permite_suplantar_a_otro_usuario`, `test_websocket_con_token_propio_recibe_mensajes` | |
-| RF-18 | `routers/llamadas.py` (`terminar`) | `videocall` | — falta prueba | |
-| RF-19 | `routers/freepbx.py`, `db/freepbx.py` | — | — falta prueba (requiere FreePBX) | |
+| RF-18 | `routers/llamadas.py` (`terminar`) | `videocall` | `test_terminar_llamada_guarda_la_duracion` | B#14, B#18 |
+| RF-19 | `routers/freepbx.py`, `db/freepbx.py` | — | `test_freepbx.py` (base CDR falsa: 503, 403, orden y límite, 502) | B#27 |
 | RF-20 | `routers/webhooks.py` | — | `test_webhooks_exigen_token` | |
 | RNF-01 | `core/security.py` | `interceptors/auth.interceptor.ts` | `test_sin_token_responde_401`, `test_token_falso_responde_401` | |
 | RNF-02 | `core/security.py` | `services/biometric.service.ts` | `test_paciente_no_modifica_ni_borra_lo_ajeno` y el resto de `test_seguridad.py` | |
@@ -34,12 +34,10 @@ Se actualiza en el mismo PR que toca un requisito (lo pide el checklist de la pl
 | RNF-06 | `Dockerfile`, `docker-compose.yml`, `core/config.py` | — | Job `docker` del CI | |
 | RNF-07 | `routers/auth.py` (`facial-login`) | `services/biometric.service.ts` | Medición por API (p95 5 ms) | B#15 |
 | RNF-08 | — | Tailwind responsive | PA-11 (iframe 360 px, 8 pantallas) | F#16, F#17 |
-| RNF-09 | `core/config.py`, `db/seeder.py` | `environments/environment.prod.ts` | — falta prueba | B#9, B#10 |
+| RNF-09 | `core/config.py`, `db/seeder.py` | `environments/environment.prod.ts` | `test_config.py` | B#9, B#14, B#18 |
 
 ## Huecos detectados
 
 Requisitos sin prueba o sin implementar; cada uno se registra como issue de la fase 4:
 
-- RF-11, RF-18, RF-19, RNF-09: sin prueba automática.
-- RF-12: no implementado.
 - RNF-07: falta medir la detección facial en el navegador (con cámara).
