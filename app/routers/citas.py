@@ -119,6 +119,9 @@ def actualizar_cita_estado(cita_id: int, payload: CitaUpdateEstado, db: Session 
     if not cita:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
     exigir_participante_de_cita(current_user, cita)
+    # El paciente solo puede cancelar; el resto de estados los maneja el médico
+    if es_paciente(current_user) and payload.estado != "cancelada":
+        raise prohibido("Solo puedes cancelar tu cita")
 
     cita.estado = payload.estado
     db.commit()
